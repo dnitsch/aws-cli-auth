@@ -31,8 +31,8 @@ sudo mv aws-cli-auth /usr/local/bin
 ## Usage
 
 ```bash
-CLI tool for retrieving AWS temporary credentials using OIDC or SAML providers. 
-Stores them under the $HOME/.aws/credentials file under a specified path
+CLI tool for retrieving AWS temporary credentials using SAML providers. 
+Stores them under the $HOME/.aws/credentials file under a specified path or returns the crednetial_process payload for use in config
 
 Usage:
   aws-cli-auth [command]
@@ -45,8 +45,9 @@ Available Commands:
 Flags:
       --cfg-section string   config section name in the yaml config file
   -h, --help                 help for aws-cli-auth
+  -k, --kill-rod             If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully
   -r, --role string          Set the role you want to assume when SAML or OIDC process completes
-  -s, --store-profile        By default the credentials are returned to stdout to be used by the credential_process
+  -s, --store-profile        By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section
 
 Use "aws-cli-auth [command] --help" for more information about a command.
 ```

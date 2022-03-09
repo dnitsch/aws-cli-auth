@@ -25,7 +25,7 @@ func GetSamlCreds(conf config.SamlConfig) {
 
 	if !util.IsValid(awsCreds) || err != nil {
 
-		t, err := web.GetSamlLogin(conf.ProviderUrl, conf.AcsUrl)
+		t, err := web.GetSamlLogin(conf)
 		if err != nil {
 			fmt.Printf("Err: %v", err)
 		}

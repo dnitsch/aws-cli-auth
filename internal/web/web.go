@@ -17,9 +17,11 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
-func GetSamlLogin(loginUrl, acsUrl string) (string, error) {
+func GetSamlLogin(conf config.SamlConfig) (string, error) {
 
-	checkRodProcess()
+	if conf.BaseConfig.DoKillHangingProcess {
+		checkRodProcess()
+	}
 
 	l := launcher.New().
 		Headless(false).
@@ -37,12 +39,12 @@ func GetSamlLogin(loginUrl, acsUrl string) (string, error) {
 
 	defer browser.MustClose()
 
-	page := browser.MustPage(loginUrl)
+	page := browser.MustPage(conf.ProviderUrl)
 
 	router := browser.HijackRequests()
 	defer router.MustStop()
 
-	router.MustAdd(acsUrl, func(ctx *rod.Hijack) {
+	router.MustAdd(conf.AcsUrl, func(ctx *rod.Hijack) {
 		body := ctx.Request.Body()
 		_ = ctx.LoadResponse(http.DefaultClient, true)
 		ctx.Response.SetBody(body)
@@ -51,7 +53,7 @@ func GetSamlLogin(loginUrl, acsUrl string) (string, error) {
 	go router.Run()
 
 	wait := page.EachEvent(func(e *proto.PageFrameRequestedNavigation) (stop bool) {
-		return e.URL == acsUrl
+		return e.URL == conf.AcsUrl
 	})
 	wait()
 

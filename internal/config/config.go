@@ -3,9 +3,10 @@ package config
 const SELF_NAME = "aws-cli-auth"
 
 type BaseConfig struct {
-	Role           string
-	CfgSectionName string
-	StoreInProfile bool
+	Role                 string
+	CfgSectionName       string
+	StoreInProfile       bool
+	DoKillHangingProcess bool
 }
 
 type SamlConfig struct {

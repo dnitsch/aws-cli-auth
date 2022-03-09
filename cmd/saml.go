@@ -35,7 +35,7 @@ func getSaml(cmd *cobra.Command, args []string) {
 		PrincipalArn: principalArn,
 		Duration:     duration,
 		AcsUrl:       acsUrl,
-		BaseConfig:   config.BaseConfig{StoreInProfile: storeInProfile, Role: role, CfgSectionName: cfgSectionName},
+		BaseConfig:   config.BaseConfig{StoreInProfile: storeInProfile, Role: role, CfgSectionName: cfgSectionName, DoKillHangingProcess: killHangingProcess},
 	}
 
 	saml.GetSamlCreds(conf)
