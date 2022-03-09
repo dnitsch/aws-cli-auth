@@ -1,13 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-	"os/user"
-
 	"github.com/dnitsch/aws-cli-auth/internal/config"
 	"github.com/dnitsch/aws-cli-auth/internal/saml"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
-	"github.com/dnitsch/aws-cli-auth/internal/web"
 	"github.com/spf13/cobra"
 )
 
@@ -35,26 +30,14 @@ func init() {
 }
 
 func getSaml(cmd *cobra.Command, args []string) {
-	if cfgSectionName == "" {
-		util.Writeln("The SAML provider name is required")
-		util.Exit(nil)
+	conf := config.SamlConfig{
+		ProviderUrl:  providerUrl,
+		PrincipalArn: principalArn,
+		Duration:     duration,
+		AcsUrl:       acsUrl,
+		BaseConfig:   config.BaseConfig{StoreInProfile: storeInProfile, Role: role, CfgSectionName: cfgSectionName},
 	}
 
-	t, err := web.GetSamlLogin(providerUrl, acsUrl)
-	if err != nil {
-		fmt.Printf("Err: %v", err)
-	}
-	user, err := user.Current()
-	if err != nil {
-		fmt.Errorf(err.Error())
-	}
+	saml.GetSamlCreds(conf)
 
-	roleObj := &util.AWSRole{RoleARN: role, PrincipalARN: principalArn, Name: util.SessionName(user.Username, config.SELF_NAME), Duration: duration}
-
-	creds, err := saml.LoginStsSaml(t, roleObj)
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-
-	util.SetCredentials(creds, cfgSectionName, storeInProfile)
 }

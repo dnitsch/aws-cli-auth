@@ -1,5 +1,5 @@
 NAME := aws-cli-auth
-VERSION := v0.1.0
+VERSION := v0.2.0
 REVISION := $(shell git rev-parse --short HEAD)
 
 LDFLAGS := -ldflags="-s -w -X \"github.com/dnitsch/aws-cli-auth/version.Version=$(VERSION)\" -X \"github.com/dnitsch/aws-cli-auth/version.Revision=$(REVISION)\" -extldflags -static"

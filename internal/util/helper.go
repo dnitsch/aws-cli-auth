@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/dnitsch/aws-cli-auth/internal/config"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -26,9 +27,10 @@ func SessionName(username, self_name string) string {
 	return fmt.Sprintf("%s-%s", username, self_name)
 }
 
-func SetCredentials(creds *AWSCredentials, configSection string, storeInProfile bool) {
-	if storeInProfile {
-		if err := storeCredentialsInProfile(*creds, configSection); err != nil {
+func SetCredentials(creds *AWSCredentials, config config.SamlConfig) {
+
+	if config.BaseConfig.StoreInProfile {
+		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			fmt.Printf("Error: %s", err.Error())
 		}
 		return

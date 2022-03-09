@@ -105,18 +105,19 @@ To give it a quick test.
 aws sts get-caller-identity --profile=nonprod_saml_admin
 ```
 
-<!-- ### Integrate aws-cli
+### Integrate aws-cli
 
 [Sourcing credentials with an external process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html) describes how to integrate aws-cli with external tool.
 You can use `aws-cli-auth` as the external process. Add the following lines to your `.aws/config` file.
 
 ```
-[profile ]
-credential_process=aws-cli-auth get-cred -p myop -r arn:aws:iam::123456789012:role/developer -j -s -d 43200
+[profile test_nonprod_iag]
+region = eu-west-1
+credential_process=aws-cli-auth saml -p https://your-idp.com/idp/foo?PARTNER=urn:amazon:webservices --principal arn:aws:iam::XXXXXXXXXX:saml-provider/IDP_ENTITY_ID -r arn:aws:iam::XXXXXXXXXX:role/Developer -d 3600
 ```
 
-Caution: The AWS temporary credentials will be saved into your OS secret store by using `-s` option to reduce authentication each time you use `aws-cli` tool.
--->
+Notice the missing `-s` | `--store-profile` flag
+
 ## Licence
  WFTPL
 
