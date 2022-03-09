@@ -116,10 +116,9 @@ credential_process=aws-cli-auth get-cred -p myop -r arn:aws:iam::123456789012:ro
 ```
 
 Caution: The AWS temporary credentials will be saved into your OS secret store by using `-s` option to reduce authentication each time you use `aws-cli` tool.
-
+-->
 ## Licence
-
-Licensed under the [MIT](/LICENSE) license. -->
+ WFTPL
 
 ## Acknowldgements
   - [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
