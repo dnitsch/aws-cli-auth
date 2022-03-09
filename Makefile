@@ -36,7 +36,7 @@ cross-build:
 	for os in darwin linux windows; do \
 	    [ $$os = "windows" ] && EXT=".exe"; \
 		for arch in amd64 arm64; do \
-			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o dist/$(NAME)-$$os-$$arch$$EXT .; \
+			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -o dist/$(NAME)-$$os-$$arch$$EXT .; \
 		done; \
 	done
 
