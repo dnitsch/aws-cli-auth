@@ -17,9 +17,9 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-var lockDir = os.TempDir() + "/aws-clie-oidc-lock"
+var lockDir = os.TempDir() + "/aws-clie-auth-lock"
 var locker lockgate.Locker
-var lockResource = "aws-cli-oidc"
+var lockResource = "aws-cli-auth"
 
 func init() {
 	var err error
