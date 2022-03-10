@@ -124,6 +124,23 @@ Notice the missing `-s` | `--store-profile` flag
 ### Use in CI
 
 
+
+```
+Initiates a specific crednetial provider [WEB_ID]
+
+Usage:
+  aws-cli-auth specific <flags> [flags]
+
+Flags:
+  -h, --help            help for specific
+  -m, --method string   If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully
+
+Global Flags:
+      --cfg-section string   config section name in the yaml config file
+  -r, --role string          Set the role you want to assume when SAML or OIDC process completes
+  -s, --store-profile        By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section
+```
+
 ## Licence
  WFTPL
 
