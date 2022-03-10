@@ -124,16 +124,45 @@ Notice the missing `-s` | `--store-profile` flag
 ### Use in CI
 
 
-
 ```
-Initiates a specific crednetial provider [WEB_ID]
+Initiates a specific crednetial provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
+This is useful in CI situations where various authentication forms maybe present from AWS_ACCESS_KEY as env vars to metadata of the node.
+Returns the same JSON object as the call to the AWS cli for any of the sts AssumeRole* commands
 
 Usage:
   aws-cli-auth specific <flags> [flags]
 
 Flags:
   -h, --help            help for specific
-  -m, --method string   If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully
+  -m, --method string   Runs a specific credentialProvider as opposed to rel (default "WEB_ID")
+
+Global Flags:
+      --cfg-section string   config section name in the yaml config file
+  -r, --role string          Set the role you want to assume when SAML or OIDC process completes
+  -s, --store-profile        By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section
+```
+
+```bash
+AWS_ROLE_ARN=arn:aws:iam::XXXX:role/some-role-in-k8s-service-account AWS_WEB_IDENTITY_TOKEN_FILE=/var/token aws-cli-auth specific | jq .
+```
+
+Above is the same as this:
+
+```bash
+AWS_ROLE_ARN=arn:aws:iam::XXXX:role/some-role-in-k8s-service-account AWS_WEB_IDENTITY_TOKEN_FILE=/var/token aws-cli-auth specific -m WEB_ID | jq .
+```
+
+### Clear
+
+```
+Clears any stored credentials in the OS secret store
+
+Usage:
+  aws-cli-auth clear-cache <flags> [flags]
+
+Flags:
+  -f, --force   If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully
+  -h, --help    help for clear-cache
 
 Global Flags:
       --cfg-section string   config section name in the yaml config file
