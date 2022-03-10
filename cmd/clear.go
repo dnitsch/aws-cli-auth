@@ -9,7 +9,7 @@ import (
 var (
 	force    bool
 	clearCmd = &cobra.Command{
-		Use:   "aws-cli-auth clear-cache",
+		Use:   "clear-cache <flags>",
 		Short: "Clears any stored credentials in the OS secret store",
 		Run:   clear,
 	}
