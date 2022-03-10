@@ -1,10 +1,10 @@
 # aws-cli-auth
 
-CLI tool for retrieving AWS temporary credentials using OIDC or SAML providers.
+CLI tool for retrieving AWS temporary credentials using SAML providers.
 
 Firstly, this package currently deals with SAML only (OIDC to come), however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML AWS integrations.
 
-If, however, you need to support a non standard user journeys enforced by your IdP i.e. a sub company selection within your organization portal, or a selection screen for different MFA providers - PingID or RSA HardToken etc.... you cannot reliably automate the flow or it would have to be too specific.
+If, however, you need to support a non standard user journeys enforced by your IdP i.e. a sub company selection within your organization login portal, or a selection screen for different MFA providers - PingID or RSA HardToken etc.... you cannot reliably automate the flow or it would have to be too specific. 
 
 As such this approach uses [go-rod](https://github.com/go-rod/rod) library to uniformly allow the user to complete any and all auth steps and selections in a managed browser session up to the point of where the SAMLResponse were to be sent to AWS ACS service `https://signin.aws.amazon.com/saml`. Capturing this via hijack request and posting to AWS STS service to exchange this for the temporary credentials.
 
@@ -25,10 +25,19 @@ Download from [Releases page](https://github.com/dnitsch/aws-cli-auth/releases).
 MacOS
 
 ```bash
-curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.1.0/aws-cli-auth-darwin-amd64 -o aws-cli-auth
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.3.0/aws-cli-auth-darwin -o aws-cli-auth
 chmod +x aws-cli-auth
 sudo mv aws-cli-auth /usr/local/bin
 ```
+
+Linux
+```bash
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.3.0/aws-cli-auth-linux -o aws-cli-auth
+chmod +x aws-cli-auth
+sudo mv aws-cli-auth /usr/local/bin
+```
+
+
 
 ## Usage
 
