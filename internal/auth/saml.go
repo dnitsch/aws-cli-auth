@@ -1,4 +1,4 @@
-package saml
+package auth
 
 import (
 	"fmt"

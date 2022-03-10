@@ -1,5 +1,5 @@
 NAME := aws-cli-auth
-VERSION := v0.2.0
+VERSION := v0.3.0
 REVISION := $(shell git rev-parse --short HEAD)
 
 LDFLAGS := -ldflags="-s -w -X \"github.com/dnitsch/aws-cli-auth/version.Version=$(VERSION)\" -X \"github.com/dnitsch/aws-cli-auth/version.Revision=$(REVISION)\" -extldflags -static"
@@ -35,9 +35,7 @@ clean:
 cross-build:
 	for os in darwin linux windows; do \
 	    [ $$os = "windows" ] && EXT=".exe"; \
-		for arch in amd64 arm64; do \
-			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -o dist/$(NAME)-$$os-$$arch$$EXT .; \
-		done; \
+		GOOS=$$os CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o dist/$(NAME)-$$os$$EXT .; \
 	done
 
 .PHONY: deps

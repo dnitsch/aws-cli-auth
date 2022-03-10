@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"github.com/dnitsch/aws-cli-auth/internal/auth"
 	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/saml"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +38,6 @@ func getSaml(cmd *cobra.Command, args []string) {
 		BaseConfig:   config.BaseConfig{StoreInProfile: storeInProfile, Role: role, CfgSectionName: cfgSectionName, DoKillHangingProcess: killHangingProcess},
 	}
 
-	saml.GetSamlCreds(conf)
+	auth.GetSamlCreds(conf)
 
 }

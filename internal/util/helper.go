@@ -75,3 +75,17 @@ func returnStdOutAsJson(creds AWSCredentials) {
 	}
 	fmt.Println(string(jsonBytes))
 }
+
+func GetWebIdTokenFileContents() (string, error) {
+	// var content *string
+	file, exists := os.LookupEnv(config.WEB_ID_TOKEN_VAR)
+	if !exists {
+		Exit(fmt.Errorf("FileNotPresent: %s", config.WEB_ID_TOKEN_VAR))
+	}
+	content, err := os.ReadFile(file)
+	if err != nil {
+		Exit(err)
+	}
+	return string(content), nil
+}
+

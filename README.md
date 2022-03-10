@@ -16,6 +16,8 @@ By default the tool creates the session name - which can be audited including th
 
 - Even though a datadir is created to store the chromium session data it is advised to still open settings and save the username/password manually the first time you are presented with the login screen.
 
+- Some login forms if not done correctly according to chrome specs and do not specify `type` on the HTML tag with `username` Chromium will not pick it up
+
 ## Install
 
 Download from [Releases page](https://github.com/dnitsch/aws-cli-auth/releases).
@@ -30,22 +32,24 @@ sudo mv aws-cli-auth /usr/local/bin
 
 ## Usage
 
-```bash
-CLI tool for retrieving AWS temporary credentials using SAML providers. 
+```
+CLI tool for retrieving AWS temporary credentials using SAML providers, or specified method of retrieval - i.e. force AWS_WEB_IDENTITY.
+Useful in situations like CI jobs or containers where multiple env vars might be present.
 Stores them under the $HOME/.aws/credentials file under a specified path or returns the crednetial_process payload for use in config
 
 Usage:
   aws-cli-auth [command]
 
 Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  saml        Get AWS credentials and out to stdout
+  aws-cli-auth Clears any stored credentials in the OS secret store
+  completion   Generate the autocompletion script for the specified shell
+  help         Help about any command
+  saml         Get AWS credentials and out to stdout
+  specific     Initiates a specific crednetial provider [WEB_ID]
 
 Flags:
       --cfg-section string   config section name in the yaml config file
   -h, --help                 help for aws-cli-auth
-  -k, --kill-rod             If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully
   -r, --role string          Set the role you want to assume when SAML or OIDC process completes
   -s, --store-profile        By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section
 
@@ -54,9 +58,7 @@ Use "aws-cli-auth [command] --help" for more information about a command.
 
 ### SAML 
 
-
-
-```bash
+```
 Get AWS credentials and out to stdout through your SAML provider authentication.
 
 Usage:
@@ -119,9 +121,12 @@ credential_process=aws-cli-auth saml -p https://your-idp.com/idp/foo?PARTNER=urn
 
 Notice the missing `-s` | `--store-profile` flag
 
+### Use in CI
+
+
 ## Licence
  WFTPL
 
-## Acknowldgements
+## Acknowledgements
   - [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
   - [Mark Wolfe](https://github.com/wolfeidau) [package](https://github.com/Versent/saml2aws)

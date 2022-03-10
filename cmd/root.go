@@ -16,8 +16,9 @@ var (
 	killHangingProcess bool
 	rootCmd            = &cobra.Command{
 		Use:   "aws-cli-auth",
-		Short: "CLI tool for retrieving AWS temporary credentials using  SAML providers",
-		Long: `CLI tool for retrieving AWS temporary credentials using SAML providers. 
+		Short: "CLI tool for retrieving AWS temporary credentials",
+		Long: `CLI tool for retrieving AWS temporary credentials using SAML providers, or specified method of retrieval - i.e. force AWS_WEB_IDENTITY.
+Useful in situations like CI jobs or containers where multiple env vars might be present.
 Stores them under the $HOME/.aws/credentials file under a specified path or returns the crednetial_process payload for use in config`,
 	}
 )
@@ -33,7 +34,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&role, "role", "r", "", "Set the role you want to assume when SAML or OIDC process completes")
 	rootCmd.PersistentFlags().StringVarP(&cfgSectionName, "cfg-section", "", "", "config section name in the yaml config file")
 	rootCmd.PersistentFlags().BoolVarP(&storeInProfile, "store-profile", "s", false, "By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section")
-	rootCmd.PersistentFlags().BoolVarP(&killHangingProcess, "kill-rod", "k", false, "If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully")
+	// rootCmd.PersistentFlags().BoolVarP(&killHangingProcess, "kill-rod", "k", false, "If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully")
 }
 
 func initConfig() {

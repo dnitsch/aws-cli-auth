@@ -17,11 +17,11 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
-func GetSamlLogin(conf config.SamlConfig) (string, error) {
+var (
+	datadir = path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
+)
 
-	if conf.BaseConfig.DoKillHangingProcess {
-		checkRodProcess()
-	}
+func GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 	l := launcher.New().
 		Headless(false).
@@ -29,7 +29,7 @@ func GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 	// do not clean up userdata
 
-	datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
+	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
 	util.WriteDataDir(datadir)
 	url := l.UserDataDir(datadir).MustLaunch()
 
@@ -60,6 +60,21 @@ func GetSamlLogin(conf config.SamlConfig) (string, error) {
 	saml := strings.Split(page.MustElement(`body`).MustText(), "SAMLResponse=")[1]
 	return nurl.QueryUnescape(saml)
 
+}
+
+func ClearCache() error {
+	errs := []error{}
+	if err := os.Remove(datadir); err != nil {
+		errs = append(errs, err)
+	}
+	if err := checkRodProcess(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if errs != nil {
+		return fmt.Errorf("%v", errs[:])
+	}
+	return nil
 }
 
 //checkRodProcess gets a list running process
