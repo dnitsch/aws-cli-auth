@@ -22,7 +22,10 @@ func init() {
 }
 
 func clear(cmd *cobra.Command, args []string) {
+	web := web.New()
+
 	if force {
+
 		if err := web.ClearCache(); err != nil {
 			util.Exit(err)
 		}

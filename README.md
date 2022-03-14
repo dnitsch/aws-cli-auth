@@ -117,7 +117,7 @@ To give it a quick test.
 aws sts get-caller-identity --profile=nonprod_saml_admin
 ```
 
-### Integrate aws-cli
+### AWS Credential Process
 
 [Sourcing credentials with an external process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html) describes how to integrate aws-cli with external tool.
 You can use `aws-cli-auth` as the external process. Add the following lines to your `.aws/config` file.

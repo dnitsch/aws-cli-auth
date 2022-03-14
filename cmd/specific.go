@@ -35,7 +35,7 @@ func specific(cmd *cobra.Command, args []string) {
 	if method != "" {
 		switch method {
 		case "WEB_ID":
-			awsCreds, err = auth.LoginAwsWebToken(os.Getenv("USER"))
+			awsCreds, err = auth.LoginAwsWebToken(os.Getenv("USER")) // TODO: redo this getUser implementation
 			if err != nil {
 				util.Exit(err)
 			}
@@ -44,6 +44,13 @@ func specific(cmd *cobra.Command, args []string) {
 		}
 	}
 	config := config.SamlConfig{BaseConfig: config.BaseConfig{StoreInProfile: storeInProfile}}
+
+	if role != "" {
+		awsCreds, err = auth.AssumeRoleWithCreds(awsCreds, os.Getenv("USER"), role)
+		if err != nil {
+			util.Exit(err)
+		}
+	}
 
 	util.SetCredentials(awsCreds, config)
 }

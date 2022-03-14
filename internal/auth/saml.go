@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"os/user"
+	"runtime"
 
 	"github.com/dnitsch/aws-cli-auth/internal/config"
 	"github.com/dnitsch/aws-cli-auth/internal/util"
@@ -15,8 +16,12 @@ func GetSamlCreds(conf config.SamlConfig) {
 		util.Exit(nil)
 	}
 
+	web := web.New()
 	var awsCreds *util.AWSCredentials
 	var err error
+
+	os := runtime.GOOS
+	util.Writeln("Is OS: %s\nAnd conf.BaseConfig.StoreInProfile: %v", os, conf.BaseConfig.StoreInProfile)
 
 	// Try to reuse stored credential in secret
 	if !conf.BaseConfig.StoreInProfile {
@@ -27,11 +32,11 @@ func GetSamlCreds(conf config.SamlConfig) {
 
 		t, err := web.GetSamlLogin(conf)
 		if err != nil {
-			fmt.Printf("Err: %v", err)
+			util.Writeln("Err: %v", err)
 		}
 		user, err := user.Current()
 		if err != nil {
-			fmt.Errorf(err.Error())
+			util.Writeln(err.Error())
 		}
 
 		roleObj := &util.AWSRole{RoleARN: conf.BaseConfig.Role, PrincipalARN: conf.PrincipalArn, Name: util.SessionName(user.Username, config.SELF_NAME), Duration: conf.Duration}

@@ -17,31 +17,45 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
-var (
-	datadir = path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
-)
+type Web struct {
+	datadir  *string
+	launcher *launcher.Launcher
+	browser  *rod.Browser
+}
 
-func GetSamlLogin(conf config.SamlConfig) (string, error) {
+func New() *Web {
+	ddir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
 
 	l := launcher.New().
 		Headless(false).
 		Devtools(false)
 
-	// do not clean up userdata
-
-	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
-	util.WriteDataDir(datadir)
-	url := l.UserDataDir(datadir).MustLaunch()
+	url := l.UserDataDir(ddir).MustLaunch()
 
 	browser := rod.New().
 		ControlURL(url).
 		MustConnect().NoDefaultDevice()
 
-	defer browser.MustClose()
+	return &Web{
+		datadir:  &ddir,
+		launcher: l,
+		browser:  browser,
+	}
 
-	page := browser.MustPage(conf.ProviderUrl)
+}
 
-	router := browser.HijackRequests()
+func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
+
+	// do not clean up userdata
+
+	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
+	util.WriteDataDir(*web.datadir)
+
+	defer web.browser.MustClose()
+
+	page := web.browser.MustPage(conf.ProviderUrl)
+
+	router := web.browser.HijackRequests()
 	defer router.MustStop()
 
 	router.MustAdd(conf.AcsUrl, func(ctx *rod.Hijack) {
@@ -62,9 +76,9 @@ func GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 }
 
-func ClearCache() error {
+func (web *Web) ClearCache() error {
 	errs := []error{}
-	if err := os.Remove(datadir); err != nil {
+	if err := os.Remove(*web.datadir); err != nil {
 		errs = append(errs, err)
 	}
 	if err := checkRodProcess(); err != nil {

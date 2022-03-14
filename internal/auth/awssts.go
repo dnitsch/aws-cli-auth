@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/dnitsch/aws-cli-auth/internal/config"
@@ -83,5 +84,39 @@ func LoginAwsWebToken(username string) (*util.AWSCredentials, error) {
 		AWSSessionToken: aws.StringValue(resp.Credentials.SessionToken),
 		PrincipalARN:    aws.StringValue(resp.AssumedRoleUser.Arn),
 		Expires:         resp.Credentials.Expiration.Local(),
+	}, nil
+}
+
+func AssumeRoleWithCreds(creds *util.AWSCredentials, username, role string) (*util.AWSCredentials, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create session")
+	}
+
+	specificCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
+		AccessKeyID:     creds.AWSAccessKey,
+		SecretAccessKey: creds.AWSSecretKey,
+		SessionToken:    creds.AWSSessionToken,
+	})
+
+	svc := sts.New(sess, aws.NewConfig().WithCredentials(specificCreds))
+	sessionName := util.SessionName(username, config.SELF_NAME)
+
+	input := &sts.AssumeRoleInput{
+		RoleArn:         &role,
+		RoleSessionName: &sessionName,
+	}
+	roleCreds, err := svc.AssumeRole(input)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to retrieve STS credentials using Role Provided")
+	}
+
+	return &util.AWSCredentials{
+		AWSAccessKey:    aws.StringValue(roleCreds.Credentials.AccessKeyId),
+		AWSSecretKey:    aws.StringValue(roleCreds.Credentials.SecretAccessKey),
+		AWSSessionToken: aws.StringValue(roleCreds.Credentials.SessionToken),
+		PrincipalARN:    aws.StringValue(roleCreds.AssumedRoleUser.Arn),
+		Expires:         roleCreds.Credentials.Expiration.Local(),
 	}, nil
 }

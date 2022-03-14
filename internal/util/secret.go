@@ -30,7 +30,6 @@ func init() {
 	}
 
 	Secret.AWSCredentials = make(map[string]string)
-	Secret.Load()
 }
 
 var secretService = config.SELF_NAME
@@ -126,7 +125,7 @@ func AWSCredential(roleArn string) (*AWSCredentials, error) {
 
 	jsonStr, ok := Secret.AWSCredentials[roleArn]
 	if !ok {
-		return nil, fmt.Errorf("Not found the credential for %s", roleArn)
+		Exit(fmt.Errorf("Not found the credential for %s", roleArn))
 	}
 
 	Writeln("Got credential from OS secret store for %s", roleArn)
