@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dnitsch/aws-cli-auth/internal/config"
+	"github.com/dnitsch/aws-cli-auth/internal/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -14,6 +15,7 @@ var (
 	cfgFile            string
 	storeInProfile     bool
 	killHangingProcess bool
+	verbose            bool
 	rootCmd            = &cobra.Command{
 		Use:   "aws-cli-auth",
 		Short: "CLI tool for retrieving AWS temporary credentials",
@@ -25,7 +27,7 @@ Stores them under the $HOME/.aws/credentials file under a specified path or retu
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Errorf(err.Error())
+		util.Exit(err)
 	}
 }
 
@@ -34,7 +36,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&role, "role", "r", "", "Set the role you want to assume when SAML or OIDC process completes")
 	rootCmd.PersistentFlags().StringVarP(&cfgSectionName, "cfg-section", "", "", "config section name in the yaml config file")
 	rootCmd.PersistentFlags().BoolVarP(&storeInProfile, "store-profile", "s", false, "By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section")
-	// rootCmd.PersistentFlags().BoolVarP(&killHangingProcess, "kill-rod", "k", false, "If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
 func initConfig() {
@@ -54,7 +56,10 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 	viper.WriteConfig()
+
+	util.IsTraceEnabled = verbose
+
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		util.Traceln("Using config file:", viper.ConfigFileUsed())
 	}
 }

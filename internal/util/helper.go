@@ -31,7 +31,7 @@ func SetCredentials(creds *AWSCredentials, config config.SamlConfig) {
 
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
-			fmt.Printf("Error: %s", err.Error())
+			Traceln("Error: %s", err.Error())
 		}
 		return
 	}
@@ -54,8 +54,8 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 
 	cfg, err := ini.Load(awsConfPath)
 	if err != nil {
-		fmt.Printf("Fail to read file: %v", err)
-		os.Exit(1)
+		Writeln("Fail to read file: %v", err)
+		Exit(err)
 	}
 	cfg.Section(configSection).Key("aws_access_key_id").SetValue(creds.AWSAccessKey)
 	cfg.Section(configSection).Key("aws_secret_access_key").SetValue(creds.AWSSecretKey)
@@ -88,4 +88,3 @@ func GetWebIdTokenFileContents() (string, error) {
 	}
 	return string(content), nil
 }
-

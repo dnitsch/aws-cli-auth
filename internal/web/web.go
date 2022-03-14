@@ -105,7 +105,7 @@ func checkRodProcess() error {
 		}
 	}
 	for _, pid := range pids {
-		fmt.Printf("Process to be killed as part of clean up: %d", pid)
+		util.Traceln("Process to be killed as part of clean up: %d", pid)
 		if proc, _ := os.FindProcess(pid); proc != nil {
 			proc.Kill()
 		}
