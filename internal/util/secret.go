@@ -3,7 +3,6 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -125,7 +124,8 @@ func AWSCredential(roleArn string) (*AWSCredentials, error) {
 
 	jsonStr, ok := Secret.AWSCredentials[roleArn]
 	if !ok {
-		Exit(fmt.Errorf("Not found the credential for %s", roleArn))
+		Writeln("Not found the credential for %s", roleArn)
+		return nil, nil
 	}
 
 	Writeln("Got credential from OS secret store for %s", roleArn)

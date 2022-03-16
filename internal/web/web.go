@@ -78,14 +78,15 @@ func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 func (web *Web) ClearCache() error {
 	errs := []error{}
-	if err := os.Remove(*web.datadir); err != nil {
+
+	if err := os.RemoveAll(*web.datadir); err != nil {
 		errs = append(errs, err)
 	}
 	if err := checkRodProcess(); err != nil {
 		errs = append(errs, err)
 	}
 
-	if errs != nil {
+	if len(errs) > 0 {
 		return fmt.Errorf("%v", errs[:])
 	}
 	return nil
