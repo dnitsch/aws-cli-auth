@@ -187,6 +187,19 @@ Global Flags:
 
 ## Contribute
 
+Contributions to the aws-auth-cli package are most welcome from engineers of all backgrounds and skill levels. 
+
+In particular the addition of extra test coverage, code enhacements.
+
+This project will adhere to the [Go Community Code of Conduct](https://go.dev/conduct) in the github provided discussion spaces.
+
+To make a contribution:
+
+- Fork the repository
+- Make your changes on the fork
+- Submit a pull request back to this repo with a clear description of the problem you're solving
+- Ensure your PR passes all current (and new) tests
+
 ## Acknowledgements
   - [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
   - [Mark Wolfe](https://github.com/wolfeidau) [package](https://github.com/Versent/saml2aws)
