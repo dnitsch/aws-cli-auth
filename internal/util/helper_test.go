@@ -25,7 +25,6 @@ func TestGetEntryInIni(t *testing.T) {
 
 //
 func TestCreateEntryInIni(t *testing.T) {
-	role := "arn:aws:iam::111122342343:role/DevAdmin"
 
 	cfg, err := ini.Load(ConfigIniFile())
 	if err != nil {
@@ -34,18 +33,17 @@ func TestCreateEntryInIni(t *testing.T) {
 	}
 
 	section := cfg.Section(config.INI_CONF_SECTION) //
-	if !cfg.HasSection(fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(role))) {
+	if !cfg.HasSection(fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(roleTest))) {
 		t.Errorf("section NOT Exists")
 	}
 	roles := section.ChildSections()
 	subSectionExists := false
 	for _, v := range roles {
-		if v.Name() == fmt.Sprintf("roles.%s", RoleKeyConverter(role)) {
+		if v.Name() == fmt.Sprintf("roles.%s", RoleKeyConverter(roleTest)) {
 			subSectionExists = true
 			break
 		}
 	}
-	// role := section.HasKey("arn:aws:iam::111122342343:role/DevAdmin")
 
 	if !subSectionExists {
 		t.Errorf("Not found nothing to do")
