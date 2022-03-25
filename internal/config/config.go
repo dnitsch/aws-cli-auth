@@ -1,8 +1,11 @@
 package config
 
-const SELF_NAME = "aws-cli-auth"
-const WEB_ID_TOKEN_VAR = "AWS_WEB_IDENTITY_TOKEN_FILE"
-const AWS_ROLE_ARN = "AWS_ROLE_ARN"
+const (
+	SELF_NAME        = "aws-cli-auth"
+	WEB_ID_TOKEN_VAR = "AWS_WEB_IDENTITY_TOKEN_FILE"
+	AWS_ROLE_ARN     = "AWS_ROLE_ARN"
+	INI_CONF_SECTION = "role"
+)
 
 type BaseConfig struct {
 	Role                 string

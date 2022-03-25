@@ -23,8 +23,9 @@ type Web struct {
 	browser  *rod.Browser
 }
 
+// New returns an initialised instance of Web struct
 func New() *Web {
-	ddir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
+	ddir := path.Join(util.HomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
 
 	l := launcher.New().
 		Headless(false).
@@ -44,6 +45,7 @@ func New() *Web {
 
 }
 
+// GetSamlLogin performs a saml login
 func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 	// do not clean up userdata

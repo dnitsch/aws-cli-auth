@@ -22,10 +22,8 @@ Returns the same JSON object as the call to the AWS cli for any of the sts Assum
 	}
 )
 
-// var strategy map[string]func
-
 func init() {
-	specificCmd.PersistentFlags().StringVarP(&method, "method", "m", "WEB_ID", "Runs a specific credentialProvider as opposed to rel")
+	specificCmd.PersistentFlags().StringVarP(&method, "method", "m", "WEB_ID", "Runs a specific credentialProvider as opposed to relying on the default chain provider fallback")
 	rootCmd.AddCommand(specificCmd)
 }
 

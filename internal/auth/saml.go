@@ -8,6 +8,7 @@ import (
 	"github.com/dnitsch/aws-cli-auth/internal/web"
 )
 
+// GetSamlCreds
 func GetSamlCreds(conf config.SamlConfig) {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
 		util.Writeln("Config-Section name must be provided if store-profile is enabled")
@@ -15,12 +16,14 @@ func GetSamlCreds(conf config.SamlConfig) {
 	}
 
 	web := web.New()
+	secretStore := util.NewSecretStore(conf.BaseConfig.Role)
 	var awsCreds *util.AWSCredentials
+
 	var err error
 
 	// Try to reuse stored credential in secret
 	if !conf.BaseConfig.StoreInProfile {
-		awsCreds, err = util.AWSCredential(conf.BaseConfig.Role)
+		awsCreds, err = secretStore.AWSCredential()
 	}
 
 	if !util.IsValid(awsCreds) || err != nil {
@@ -43,7 +46,7 @@ func GetSamlCreds(conf config.SamlConfig) {
 		}
 
 		awsCreds.Version = 1
-		util.SaveAWSCredential(conf.BaseConfig.Role, awsCreds)
+		secretStore.SaveAWSCredential(awsCreds)
 	}
 
 	util.SetCredentials(awsCreds, conf)

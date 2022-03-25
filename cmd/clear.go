@@ -23,6 +23,7 @@ func init() {
 
 func clear(cmd *cobra.Command, args []string) {
 	web := web.New()
+	secretStore := util.NewSecretStore("")
 
 	if force {
 
@@ -31,6 +32,6 @@ func clear(cmd *cobra.Command, args []string) {
 		}
 		util.Writeln("Chromium Cache cleared")
 	}
-	util.Clear()
+	secretStore.ClearAll()
 
 }

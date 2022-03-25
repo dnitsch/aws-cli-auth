@@ -7,7 +7,6 @@ import (
 	"github.com/dnitsch/aws-cli-auth/internal/config"
 	"github.com/dnitsch/aws-cli-auth/internal/util"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -40,26 +39,11 @@ func init() {
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory with name ".cobra" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(fmt.Sprintf(".%s", config.SELF_NAME))
-	}
-
-	viper.AutomaticEnv()
-	viper.WriteConfig()
-
 	util.IsTraceEnabled = verbose
-
-	if err := viper.ReadInConfig(); err == nil {
-		util.Traceln("Using config file:", viper.ConfigFileUsed())
+	if _, err := os.Stat(util.ConfigIniFile()); err != nil {
+		// creating a file
+		rolesInit := []byte(fmt.Sprintf("[%s]\n", config.INI_CONF_SECTION))
+		err := os.WriteFile(util.ConfigIniFile(), rolesInit, 0644)
+		cobra.CheckErr(err)
 	}
 }
