@@ -2,7 +2,7 @@
 
 CLI tool for retrieving AWS temporary credentials using SAML providers.
 
-Firstly, this package currently deals with SAML only (OIDC to come), however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML AWS integrations.
+Firstly, this package currently deals with SAML only, however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML only AWS integrations - standard meaning 
 
 If, however, you need to support a non standard user journeys enforced by your IdP i.e. a sub company selection within your organization login portal, or a selection screen for different MFA providers - PingID or RSA HardToken etc.... you cannot reliably automate the flow or it would have to be too specific. 
 
@@ -184,6 +184,8 @@ Global Flags:
 
 ## Licence
  WFTPL
+
+## Contribute
 
 ## Acknowledgements
   - [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
