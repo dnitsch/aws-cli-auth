@@ -15,7 +15,6 @@ func GetSamlCreds(conf config.SamlConfig) {
 		util.Exit(nil)
 	}
 
-	web := web.New()
 	secretStore := util.NewSecretStore(conf.BaseConfig.Role)
 	var awsCreds *util.AWSCredentials
 
@@ -27,6 +26,7 @@ func GetSamlCreds(conf config.SamlConfig) {
 	}
 
 	if !util.IsValid(awsCreds) || err != nil {
+		web := web.New()
 
 		t, err := web.GetSamlLogin(conf)
 		if err != nil {
