@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/dnitsch/aws-cli-auth/internal/util"
 	"github.com/dnitsch/aws-cli-auth/internal/web"
 	"github.com/spf13/cobra"
@@ -34,4 +36,7 @@ func clear(cmd *cobra.Command, args []string) {
 	}
 	secretStore.ClearAll()
 
+	if err := os.Remove(util.ConfigIniFile()); err != nil {
+		util.Exit(err)
+	}
 }
