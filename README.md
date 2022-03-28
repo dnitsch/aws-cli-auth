@@ -126,7 +126,7 @@ aws sts get-caller-identity --profile=nonprod_saml_admin
 You can use `aws-cli-auth` as the external process. Add the following lines to your `.aws/config` file.
 
 ```
-[profile test_nonprod_iag]
+[profile test_nonprod]
 region = eu-west-1
 credential_process=aws-cli-auth saml -p https://your-idp.com/idp/foo?PARTNER=urn:amazon:webservices --principal arn:aws:iam::XXXXXXXXXX:saml-provider/IDP_ENTITY_ID -r arn:aws:iam::XXXXXXXXXX:role/Developer -d 3600
 ```
