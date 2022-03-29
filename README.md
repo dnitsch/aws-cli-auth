@@ -25,21 +25,21 @@ Download from [Releases page](https://github.com/dnitsch/aws-cli-auth/releases).
 MacOS
 
 ```bash
-curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.1/aws-cli-auth-darwin -o aws-cli-auth
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-darwin -o aws-cli-auth
 chmod +x aws-cli-auth
 sudo mv aws-cli-auth /usr/local/bin
 ```
 
 Linux
 ```bash
-curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.1/aws-cli-auth-linux -o aws-cli-auth
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-linux -o aws-cli-auth
 chmod +x aws-cli-auth
 sudo mv aws-cli-auth /usr/local/bin
 ```
 
 Windows
 ```posh
-iwr -Uri "https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.1/aws-cli-auth-windows.exe" -OutFile "aws-cli-auth"
+iwr -Uri "https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-windows.exe" -OutFile "aws-cli-auth"
 ```
 
 ## Usage
