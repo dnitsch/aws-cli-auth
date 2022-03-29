@@ -7,7 +7,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.3.0
-	github.com/spf13/viper v1.10.1
+	// github.com/spf13/viper v1.10.1
 	github.com/zalando/go-keyring v0.2.1
 )
 
@@ -26,7 +26,7 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-rod/rod v0.103.0
+	github.com/go-rod/rod v0.104.2
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

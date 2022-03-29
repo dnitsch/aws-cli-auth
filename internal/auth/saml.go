@@ -17,7 +17,7 @@ func GetSamlCreds(conf config.SamlConfig) {
 
 	secretStore := util.NewSecretStore(conf.BaseConfig.Role)
 	var awsCreds *util.AWSCredentials
-
+	var webBrowser *web.Web
 	var err error
 
 	// Try to reuse stored credential in secret
@@ -26,9 +26,9 @@ func GetSamlCreds(conf config.SamlConfig) {
 	}
 
 	if !util.IsValid(awsCreds) || err != nil {
-		web := web.New()
+		webBrowser = web.New()
 
-		t, err := web.GetSamlLogin(conf)
+		t, err := webBrowser.GetSamlLogin(conf)
 		if err != nil {
 			util.Writeln("Err: %v", err)
 		}
