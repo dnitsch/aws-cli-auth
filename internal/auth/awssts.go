@@ -33,7 +33,7 @@ func LoginStsSaml(samlResponse string, role *util.AWSRole) (*util.AWSCredentials
 		PrincipalArn:    aws.String(role.PrincipalARN), // Required
 		RoleArn:         aws.String(role.RoleARN),      // Required
 		SAMLAssertion:   aws.String(samlResponse),      // Required
-		DurationSeconds: aws.Int64(3600),
+		DurationSeconds: aws.Int64(int64(role.Duration)),
 	}
 
 	resp, err := svc.AssumeRoleWithSAML(params)
