@@ -2,13 +2,13 @@
 
 CLI tool for retrieving AWS temporary credentials using SAML providers.
 
-Firstly, this package currently deals with SAML only, however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML only AWS integrations - standard meaning 
+Firstly, this package currently deals with SAML only, however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML only AWS integrations - standard meaning.
 
-If, however, you need to support a non standard user journeys enforced by your IdP i.e. a sub company selection within your organization login portal, or a selection screen for different MFA providers - PingID or RSA HardToken etc.... you cannot reliably automate the flow or it would have to be too specific. 
+If, however, you need to support a non standard user journeys enforced by your IdP i.e. a sub company selection within your organization login portal, or a selection screen for different MFA providers - PingID or RSA HardToken etc.... you cannot reliably automate the flow or it would have to be too specific.
 
 As such this approach uses [go-rod](https://github.com/go-rod/rod) library to uniformly allow the user to complete any and all auth steps and selections in a managed browser session up to the point of where the SAMLResponse were to be sent to AWS ACS service `https://signin.aws.amazon.com/saml`. Capturing this via hijack request and posting to AWS STS service to exchange this for the temporary credentials.
 
-The advantage of using SAML is that real users can gain access to the AWS Console UI or programatically and audited as the same person in cloudtrail. 
+The advantage of using SAML is that real users can gain access to the AWS Console UI or programatically and audited as the same person in cloudtrail.
 
 By default the tool creates the session name - which can be audited including the persons username from the localhost.
 
@@ -18,28 +18,42 @@ By default the tool creates the session name - which can be audited including th
 
 - Some login forms if not done correctly according to chrome specs and do not specify `type` on the HTML tag with `username` Chromium will not pick it up
 
-## Install
+- As the process of re-requesting new credentials is **by design** and should be used in places where it cannot be automated - it is good idea **IF POSSIBLE** to use longer sessions for ***NON LIVE*** AWS accounts so that the prompt is not too frequent.
 
-Download from [Releases page](https://github.com/dnitsch/aws-cli-auth/releases).
+## Install
 
 MacOS
 
 ```bash
-curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-darwin -o aws-cli-auth
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/latest/download/aws-cli-auth-darwin -o aws-cli-auth
 chmod +x aws-cli-auth
 sudo mv aws-cli-auth /usr/local/bin
 ```
 
 Linux
+
 ```bash
-curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-linux -o aws-cli-auth
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/latest/download/aws-cli-auth-linux -o aws-cli-auth
 chmod +x aws-cli-auth
 sudo mv aws-cli-auth /usr/local/bin
 ```
 
 Windows
+
 ```posh
-iwr -Uri "https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-windows.exe" -OutFile "aws-cli-auth"
+iwr -Uri "https://github.com/dnitsch/aws-cli-auth/releases/latest/download/aws-cli-auth-windows.exe" -OutFile "aws-cli-auth"
+```
+
+### Versioned
+
+Download a specific version from [Releases page](https://github.com/dnitsch/aws-cli-auth/releases)
+
+example for MacOS
+
+```bash
+curl -L https://github.com/dnitsch/aws-cli-auth/releases/download/v0.6.2/aws-cli-auth-darwin -o aws-cli-auth
+chmod +x aws-cli-auth
+sudo mv aws-cli-auth /usr/local/bin
 ```
 
 ## Usage
@@ -68,7 +82,7 @@ Flags:
 Use "aws-cli-auth [command] --help" for more information about a command.
 ```
 
-### SAML 
+### SAML
 
 ```
 Get AWS credentials and out to stdout through your SAML provider authentication.
@@ -131,10 +145,21 @@ region = eu-west-1
 credential_process=aws-cli-auth saml -p https://your-idp.com/idp/foo?PARTNER=urn:amazon:webservices --principal arn:aws:iam::XXXXXXXXXX:saml-provider/IDP_ENTITY_ID -r arn:aws:iam::XXXXXXXXXX:role/Developer -d 3600
 ```
 
+Optionally you can still use it as a source profile provided your base role allows AssumeRole on that resource
+
+```
+[profile elevated_from_test_nonprod]
+role_arn = arn:aws:iam::XXXXXXXXXX:role/ElevatedRole
+source_profile = test_nonprod
+region = eu-west-1
+output = json
+```
+
 Notice the missing `-s` | `--store-profile` flag
 
 ### Use in CI
 
+Often times in CI you may have multiple credential provider methods enabled for various flows - this method lets you specify the exact credential provider to use without removing environment variables.
 
 ```
 Initiates a specific crednetial provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
@@ -183,7 +208,8 @@ Global Flags:
 ```
 
 ## Licence
- WFTPL
+
+WFTPL
 
 ## Contribute
 
@@ -201,5 +227,8 @@ To make a contribution:
 - Ensure your PR passes all current (and new) tests
 
 ## Acknowledgements
-  - [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
-  - [Mark Wolfe](https://github.com/wolfeidau) [package](https://github.com/Versent/saml2aws)
+
+Inspired by/Borrowed the design for secretStore from these 2 packages:
+
+- [Hiroyuki Wada](https://github.com/wadahiro) [package](https://github.com/openstandia/aws-cli-oidc) 
+- [Mark Wolfe](https://github.com/wolfeidau) [package](https://github.com/Versent/saml2aws)
