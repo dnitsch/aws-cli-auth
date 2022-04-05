@@ -38,6 +38,15 @@ cross-build:
 		GOOS=$$os CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o dist/$(NAME)-$$os$$EXT .; \
 	done
 
+release: cross-build
+	git tag $(VERSION)
+	git push origin $(VERSION)
+	curl \
+	-X POST \
+	-H "Accept: application/vnd.github.v3+json" \
+	https://api.github.com/repos/dnitsch/$(NAME)/releases \
+	-d '{"tag_name":"$(VERSION)","generate_release_notes":true,"prerelease":false}'
+
 .PHONY: deps
 deps:
 	GO111MODULE=on go mod vendor
