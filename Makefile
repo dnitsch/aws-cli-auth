@@ -1,6 +1,8 @@
+OWNER := dnitsch
 NAME := aws-cli-auth
-VERSION := v0.6.3
+VERSION := v0.7.0
 REVISION := $(shell git rev-parse --short HEAD)
+
 
 LDFLAGS := -ldflags="-s -w -X \"github.com/dnitsch/aws-cli-auth/cmd.Version=$(VERSION)\" -X \"github.com/dnitsch/aws-cli-auth/cmd.Revision=$(REVISION)\" -extldflags -static"
 
@@ -43,8 +45,9 @@ release: cross-build
 	git push origin $(VERSION)
 	curl \
 	-X POST \
+	-u $(OWNER):$(PAT) \
 	-H "Accept: application/vnd.github.v3+json" \
-	https://api.github.com/repos/dnitsch/$(NAME)/releases \
+	https://api.github.com/repos/$(OWNER)/$(NAME)/releases \
 	-d '{"tag_name":"$(VERSION)","generate_release_notes":true,"prerelease":false}'
 
 .PHONY: deps
