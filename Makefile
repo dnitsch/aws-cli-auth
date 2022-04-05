@@ -1,6 +1,6 @@
 OWNER := dnitsch
 NAME := aws-cli-auth
-VERSION := v0.7.2
+VERSION := v0.7.3
 REVISION := $(shell git rev-parse --short HEAD)
 
 
