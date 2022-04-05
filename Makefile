@@ -39,23 +39,10 @@ cross-build:
 		GOOS=$$os CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o dist/$(NAME)-$$os$$EXT .; \
 	done
 
-#  cross-build
-release:
+release: cross-build
 	git tag $(VERSION)
 	git push origin $(VERSION)
 	OWNER=$(OWNER) NAME=$(NAME) PAT=$(PAT) VERSION=$(VERSION) . hack/release.sh 
-# id=$(shell curl \
-# -X POST \
-# -u $(OWNER):$(PAT) \
-# -H "Accept: application/vnd.github.v3+json" \
-# https://api.github.com/repos/$(OWNER)/$(NAME)/releases \
-# -d '{"tag_name":"$(VERSION)","generate_release_notes":true,"prerelease":false}' | jq -r .id) \
-# upload_url=https://uploads.github.com/repos/$(OWNER)/$(NAME)/releases/$$id/assets; \
-# for asset in dist/*; do \
-# 	echo $$asset; \
-# 	name=$(shell echo $asset | cut -c 6-); \
-# 	curl -u $(OWNER):$(PAT) -H "Content-Type: application/x-binary" -X POST --data-binary "@$$asset" "$$upload_url?name=$$name"; \
-# done 
 
 .PHONY: deps
 deps:
