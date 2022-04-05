@@ -1,6 +1,6 @@
 OWNER := dnitsch
 NAME := aws-cli-auth
-VERSION := v0.7.3
+VERSION := v0.7.4
 REVISION := $(shell git rev-parse --short HEAD)
 
 
@@ -43,7 +43,7 @@ cross-build:
 release: cross-build
 	git tag $(VERSION)
 	git push origin $(VERSION)
-	id=$(curl \
+	id=$(shell curl \
 	-X POST \
 	-u $(OWNER):$(PAT) \
 	-H "Accept: application/vnd.github.v3+json" \
@@ -52,7 +52,7 @@ release: cross-build
 	upload_url=https://uploads.github.com/repos/$(OWNER)/$(NAME)/releases/$$id/assets; \
 	for asset in dist/*; do \
 		echo $$asset; \
-		name=$(echo $$asset | cut -c 6-); \
+		name=$(shell echo $$asset | cut -c 6-); \
 		curl -u $(OWNER):$(PAT) -H "Content-Type: application/x-binary" -X POST --data-binary "@$$asset" "$$upload_url?name=$$name"; \
 	done 
 
