@@ -18,38 +18,59 @@ import (
 )
 
 type Web struct {
-	datadir  *string
-	launcher *launcher.Launcher
-	browser  *rod.Browser
+	datadir *string
+	browser *rod.Browser
 }
 
-// New returns an initialised instance of Web struct
+// New returns an initialised instance of Web struct using the default chromium embedded browser
 func New() *Web {
 	ddir := path.Join(util.HomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
 
+	return &Web{
+		datadir: &ddir,
+	}
+}
+
+// WithDefaultLauncher returns the default chromium browser
+func (web *Web) WithDefaultLauncher() *Web {
+
 	l := launcher.New().
 		Headless(false).
-		Devtools(false)
+		Devtools(false).
+		Leakless(true)
 
-	url := l.UserDataDir(ddir).MustLaunch()
+	url := l.UserDataDir(*web.datadir).MustLaunch()
 
 	browser := rod.New().
 		ControlURL(url).
 		MustConnect().NoDefaultDevice()
 
-	return &Web{
-		datadir:  &ddir,
-		launcher: l,
-		browser:  browser,
-	}
-
+	web.browser = browser
+	return web
 }
 
-// GetSamlLogin performs a saml login
+func (web *Web) WithCustomLauncher(execPath string) *Web {
+	l := launcher.New().
+		Bin(execPath).
+		// Set("load-extension", "/Users/dusannitschneider/Library/Application Support/BraveSoftware/Brave-Browser/Default/Extensions/hdokiejnpimakedhajhdlcegeplioahd/4.92.0.1_0").
+		ProfileDir("").
+		Headless(false).
+		Devtools(false)
+
+	url := l.MustLaunch()
+
+	browser := rod.New().
+		ControlURL(url).
+		MustConnect()
+
+	web.browser = browser
+	return web
+}
+
+// GetSamlLogin performs a saml login flow in managed browser
 func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
 
 	// do not clean up userdata
-
 	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
 	util.WriteDataDir(*web.datadir)
 

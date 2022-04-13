@@ -8,7 +8,8 @@ import (
 	"github.com/dnitsch/aws-cli-auth/internal/web"
 )
 
-// GetSamlCreds
+// GetSamlCreds manages the top level process
+// for retrieving and storing credentials
 func GetSamlCreds(conf config.SamlConfig) {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
 		util.Writeln("Config-Section name must be provided if store-profile is enabled")
@@ -24,7 +25,12 @@ func GetSamlCreds(conf config.SamlConfig) {
 	awsCreds, err = secretStore.AWSCredential()
 
 	if !util.IsValid(awsCreds) || err != nil {
-		webBrowser = web.New()
+		web := web.New()
+		if conf.ExecPath != "" {
+			webBrowser = web.WithCustomLauncher(conf.ExecPath)
+		} else {
+			webBrowser = web.WithDefaultLauncher()
+		}
 
 		t, err := webBrowser.GetSamlLogin(conf)
 		if err != nil {
