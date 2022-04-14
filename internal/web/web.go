@@ -29,7 +29,8 @@ func New() *Web {
 
 	l := launcher.New().
 		Headless(false).
-		Devtools(false)
+		Devtools(false).
+		Leakless(true)
 
 	url := l.UserDataDir(ddir).MustLaunch()
 
