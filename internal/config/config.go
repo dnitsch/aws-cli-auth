@@ -19,5 +19,6 @@ type SamlConfig struct {
 	ProviderUrl  string
 	PrincipalArn string
 	AcsUrl       string
+	ExecPath     string
 	Duration     int64
 }
