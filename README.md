@@ -20,6 +20,8 @@ By default the tool creates the session name - which can be audited including th
 
 - As the process of re-requesting new credentials is **by design** and should be used in places where it cannot be automated - it is good idea **IF POSSIBLE** to use longer sessions for ***NON LIVE*** AWS accounts so that the prompt is not too frequent.
 
+- Prior to `v0.8.0` you might be need to manually kill the `aws-cli-auth` process manually from your OS's process manager.
+
 ## Install
 
 MacOS

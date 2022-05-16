@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/dnitsch/aws-cli-auth/internal/config"
@@ -25,8 +26,10 @@ func TestGetEntryInIni(t *testing.T) {
 
 //
 func TestCreateEntryInIni(t *testing.T) {
+	dir, _ := os.Getwd()
+	cfg, err := ini.Load(ConfigIniFile(dir))
+	// config.INI_CONF_SECTION = "unitTestRole"
 
-	cfg, err := ini.Load(ConfigIniFile())
 	if err != nil {
 		Writeln("Fail to read Ini file: %v", err)
 		Exit(err)

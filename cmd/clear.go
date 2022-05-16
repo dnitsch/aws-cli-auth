@@ -36,7 +36,7 @@ func clear(cmd *cobra.Command, args []string) {
 	}
 	secretStore.ClearAll()
 
-	if err := os.Remove(util.ConfigIniFile()); err != nil {
+	if err := os.Remove(util.ConfigIniFile("")); err != nil {
 		util.Exit(err)
 	}
 

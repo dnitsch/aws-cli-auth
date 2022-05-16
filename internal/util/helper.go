@@ -24,8 +24,14 @@ func HomeDir() string {
 	return home
 }
 
-func ConfigIniFile() string {
-	return path.Join(HomeDir(), fmt.Sprintf(".%s.ini", config.SELF_NAME))
+func ConfigIniFile(basePath string) string {
+	var base = ""
+	if basePath != "" {
+		base = basePath
+	} else {
+		base = HomeDir()
+	}
+	return path.Join(base, fmt.Sprintf(".%s.ini", config.SELF_NAME))
 }
 
 func WriteDataDir(datadir string) {
@@ -41,6 +47,7 @@ func SetCredentials(creds *AWSCredentials, config config.SamlConfig) {
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			Traceln("Error: %s", err.Error())
+			Exit(err)
 		}
 		return
 	}
@@ -128,9 +135,10 @@ func IsValid(cred *AWSCredentials) bool {
 	return err == nil
 }
 
+// WriteIniSection update ini sections in own config file
 func WriteIniSection(role string) error {
 	section := fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(role))
-	cfg, err := ini.Load(ConfigIniFile())
+	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
 		Writeln("Fail to read Ini file: %v", err)
 		Exit(err)
@@ -141,7 +149,7 @@ func WriteIniSection(role string) error {
 			return err
 		}
 		sct.Key("name").SetValue(role)
-		cfg.SaveTo(ConfigIniFile())
+		cfg.SaveTo(ConfigIniFile(""))
 	}
 
 	return nil
@@ -149,7 +157,7 @@ func WriteIniSection(role string) error {
 
 func GetAllIniSections() ([]string, error) {
 	sections := []string{}
-	cfg, err := ini.Load(ConfigIniFile())
+	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
 		return nil, err
 	}

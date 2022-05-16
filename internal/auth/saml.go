@@ -28,18 +28,17 @@ func GetSamlCreds(conf config.SamlConfig) {
 
 		t, err := webBrowser.GetSamlLogin(conf)
 		if err != nil {
-			util.Writeln("Err: %v", err)
+			util.Exit(err)
 		}
 		user, err := user.Current()
 		if err != nil {
-			util.Writeln(err.Error())
+			util.Exit(err)
 		}
 
 		roleObj := &util.AWSRole{RoleARN: conf.BaseConfig.Role, PrincipalARN: conf.PrincipalArn, Name: util.SessionName(user.Username, config.SELF_NAME), Duration: conf.Duration}
 
 		awsCreds, err = LoginStsSaml(t, roleObj)
 		if err != nil {
-			util.Writeln("%v", err)
 			util.Exit(err)
 		}
 

@@ -40,10 +40,10 @@ func init() {
 
 func initConfig() {
 	util.IsTraceEnabled = verbose
-	if _, err := os.Stat(util.ConfigIniFile()); err != nil {
+	if _, err := os.Stat(util.ConfigIniFile("")); err != nil {
 		// creating a file
 		rolesInit := []byte(fmt.Sprintf("[%s]\n", config.INI_CONF_SECTION))
-		err := os.WriteFile(util.ConfigIniFile(), rolesInit, 0644)
+		err := os.WriteFile(util.ConfigIniFile(""), rolesInit, 0644)
 		cobra.CheckErr(err)
 	}
 }
