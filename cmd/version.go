@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dnitsch/aws-cli-auth/internal/config"
+	"github.com/dnitsch/aws-cli-auth/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -22,5 +23,6 @@ var versionCmd = &cobra.Command{
 	Long:  `Version and Revision number of the installed CLI`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Version: %s\nRevision: %s\n", Version, Revision)
+		util.CleanExit()
 	},
 }

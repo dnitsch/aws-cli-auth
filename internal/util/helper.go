@@ -158,3 +158,8 @@ func GetAllIniSections() ([]string, error) {
 	}
 	return sections, nil
 }
+
+// CleanExit signals 0 exit code and should clean up any current process
+func CleanExit() {
+	os.Exit(0)
+}

@@ -39,4 +39,6 @@ func clear(cmd *cobra.Command, args []string) {
 	if err := os.Remove(util.ConfigIniFile()); err != nil {
 		util.Exit(err)
 	}
+
+	util.CleanExit()
 }
