@@ -1,5 +1,7 @@
 # aws-cli-auth
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/dnitsch/aws-cli-auth)](https://goreportcard.com/report/github.com/dnitsch/aws-cli-auth)
+
 CLI tool for retrieving AWS temporary credentials using SAML providers.
 
 Firstly, this package currently deals with SAML only, however if you have an OIDC IdP provider set up to AWS you can use this [package](https://github.com/openstandia/aws-cli-oidc) and likewise this [package](https://github.com/Versent/saml2aws) for standard SAML only AWS integrations - standard meaning.

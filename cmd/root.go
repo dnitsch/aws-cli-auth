@@ -11,7 +11,6 @@ import (
 
 var (
 	cfgSectionName     string
-	cfgFile            string
 	storeInProfile     bool
 	killHangingProcess bool
 	verbose            bool
