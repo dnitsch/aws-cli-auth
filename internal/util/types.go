@@ -17,5 +17,5 @@ type AWSRole struct {
 	RoleARN      string
 	PrincipalARN string
 	Name         string
-	Duration     int64
+	Duration     int
 }

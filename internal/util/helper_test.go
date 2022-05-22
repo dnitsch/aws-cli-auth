@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dnitsch/aws-cli-auth/internal/config"
 	ini "gopkg.in/ini.v1"
@@ -50,5 +51,27 @@ func TestCreateEntryInIni(t *testing.T) {
 
 	if !subSectionExists {
 		t.Errorf("Not found nothing to do")
+	}
+}
+
+func TestReloadBeforeExpirySuccess(t *testing.T) {
+
+	expiry := (time.Now()).Add(time.Second * 305)
+
+	got := reloadBeforeExpiry(expiry, 300)
+
+	if got {
+		t.Errorf("Expected %v, got: %v", false, got)
+	}
+}
+
+func TestReloadBeforeExpiryNeedToRefresh(t *testing.T) {
+
+	expiry := (time.Now()).Add(time.Second * 299)
+
+	got := reloadBeforeExpiry(expiry, 300)
+
+	if !got {
+		t.Errorf("Expected %v, got: %v", false, got)
 	}
 }

@@ -12,6 +12,7 @@ type BaseConfig struct {
 	CfgSectionName       string
 	StoreInProfile       bool
 	DoKillHangingProcess bool
+	ReloadBeforeTime     int
 }
 
 type SamlConfig struct {
@@ -19,5 +20,5 @@ type SamlConfig struct {
 	ProviderUrl  string
 	PrincipalArn string
 	AcsUrl       string
-	Duration     int64
+	Duration     int
 }

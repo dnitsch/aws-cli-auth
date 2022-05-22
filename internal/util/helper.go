@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -25,7 +26,7 @@ func HomeDir() string {
 }
 
 func ConfigIniFile(basePath string) string {
-	var base = ""
+	var base string
 	if basePath != "" {
 		base = basePath
 	} else {
@@ -105,8 +106,12 @@ func GetWebIdTokenFileContents() (string, error) {
 	return string(content), nil
 }
 
-func IsValid(cred *AWSCredentials) bool {
-	if cred == nil {
+// IsValid checks current credentials and
+// returns them if they are still valid
+// if reloadTimeBefore is less than time left on the creds
+// then it will re-request a login
+func IsValid(currentCreds *AWSCredentials, relaodBeforeTime int) bool {
+	if currentCreds == nil {
 		return false
 	}
 
@@ -117,9 +122,9 @@ func IsValid(cred *AWSCredentials) bool {
 	}
 
 	creds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     cred.AWSAccessKey,
-		SecretAccessKey: cred.AWSSecretKey,
-		SessionToken:    cred.AWSSessionToken,
+		AccessKeyID:     currentCreds.AWSAccessKey,
+		SecretAccessKey: currentCreds.AWSSecretKey,
+		SessionToken:    currentCreds.AWSSessionToken,
 	})
 
 	svc := sts.New(sess, aws.NewConfig().WithCredentials(creds))
@@ -132,7 +137,17 @@ func IsValid(cred *AWSCredentials) bool {
 		Writeln("The previous credential isn't valid")
 	}
 
-	return err == nil
+	return err == nil && !reloadBeforeExpiry(currentCreds.Expires, relaodBeforeTime)
+}
+
+// reloadBeforeExpiry returns true if the time
+// to expiry is less than the specified time in seconds
+// false if there is more than required time in seconds
+// before needing to recycle credentials
+func reloadBeforeExpiry(expiry time.Time, reloadBeforeSeconds int) bool {
+	now := time.Now()
+	diff := expiry.Sub(now)
+	return diff.Seconds() < float64(reloadBeforeSeconds)
 }
 
 // WriteIniSection update ini sections in own config file
