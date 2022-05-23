@@ -43,16 +43,16 @@ func SessionName(username, self_name string) string {
 	return fmt.Sprintf("%s-%s", username, self_name)
 }
 
-func SetCredentials(creds *AWSCredentials, config config.SamlConfig) {
+func SetCredentials(creds *AWSCredentials, config config.SamlConfig) error {
 
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			Traceln("Error: %s", err.Error())
-			Exit(err)
+			return err
 		}
-		return
+		return nil
 	}
-	returnStdOutAsJson(*creds)
+	return returnStdOutAsJson(*creds)
 }
 
 func storeCredentialsInProfile(creds AWSCredentials, configSection string) error {
@@ -82,15 +82,16 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 	return nil
 }
 
-func returnStdOutAsJson(creds AWSCredentials) {
+func returnStdOutAsJson(creds AWSCredentials) error {
 	creds.Version = 1
 
 	jsonBytes, err := json.Marshal(creds)
 	if err != nil {
 		Writeln("Unexpected AWS credential response")
-		Exit(err)
+		return err
 	}
 	fmt.Println(string(jsonBytes))
+	return nil
 }
 
 func GetWebIdTokenFileContents() (string, error) {

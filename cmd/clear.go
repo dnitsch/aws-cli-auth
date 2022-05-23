@@ -13,7 +13,7 @@ var (
 	clearCmd = &cobra.Command{
 		Use:   "clear-cache <flags>",
 		Short: "Clears any stored credentials in the OS secret store",
-		Run:   clear,
+		RunE:  clear,
 	}
 )
 
@@ -23,7 +23,7 @@ func init() {
 	rootCmd.AddCommand(clearCmd)
 }
 
-func clear(cmd *cobra.Command, args []string) {
+func clear(cmd *cobra.Command, args []string) error {
 	web := web.New()
 	secretStore := util.NewSecretStore("")
 
@@ -37,8 +37,8 @@ func clear(cmd *cobra.Command, args []string) {
 	secretStore.ClearAll()
 
 	if err := os.Remove(util.ConfigIniFile("")); err != nil {
-		util.Exit(err)
+		return err
 	}
 
-	util.CleanExit()
+	return nil
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/dnitsch/aws-cli-auth/internal/auth"
 	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +19,7 @@ var (
 		Use:   "saml <SAML ProviderUrl>",
 		Short: "Get AWS credentials and out to stdout",
 		Long:  `Get AWS credentials and out to stdout through your SAML provider authentication.`,
-		Run:   getSaml,
+		RunE:  getSaml,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if reloadBeforeTime != 0 && reloadBeforeTime > duration {
 				return fmt.Errorf("reload-before: %v, must be less than duration (-d): %v", reloadBeforeTime, duration)
@@ -42,7 +41,7 @@ func init() {
 	rootCmd.AddCommand(samlCmd)
 }
 
-func getSaml(cmd *cobra.Command, args []string) {
+func getSaml(cmd *cobra.Command, args []string) error {
 	conf := config.SamlConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
@@ -57,6 +56,8 @@ func getSaml(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	auth.GetSamlCreds(conf)
-	util.CleanExit()
+	if err := auth.GetSamlCreds(conf); err != nil {
+		return err
+	}
+	return nil
 }

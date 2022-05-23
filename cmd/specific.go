@@ -18,7 +18,7 @@ var (
 		Long: `Initiates a specific crednetial provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
 This is useful in CI situations where various authentication forms maybe present from AWS_ACCESS_KEY as env vars to metadata of the node.
 Returns the same JSON object as the call to the AWS cli for any of the sts AssumeRole* commands`,
-		Run: specific,
+		RunE: specific,
 	}
 )
 
@@ -27,7 +27,7 @@ func init() {
 	rootCmd.AddCommand(specificCmd)
 }
 
-func specific(cmd *cobra.Command, args []string) {
+func specific(cmd *cobra.Command, args []string) error {
 	var awsCreds *util.AWSCredentials
 	var err error
 	if method != "" {
@@ -35,10 +35,10 @@ func specific(cmd *cobra.Command, args []string) {
 		case "WEB_ID":
 			awsCreds, err = auth.LoginAwsWebToken(os.Getenv("USER")) // TODO: redo this getUser implementation
 			if err != nil {
-				util.Exit(err)
+				return err
 			}
 		default:
-			util.Exit(fmt.Errorf("Unsupported Method: %s", method))
+			return fmt.Errorf("unsupported Method: %s", method)
 		}
 	}
 	config := config.SamlConfig{BaseConfig: config.BaseConfig{StoreInProfile: storeInProfile}}
@@ -46,9 +46,12 @@ func specific(cmd *cobra.Command, args []string) {
 	if role != "" {
 		awsCreds, err = auth.AssumeRoleWithCreds(awsCreds, os.Getenv("USER"), role)
 		if err != nil {
-			util.Exit(err)
+			return err
 		}
 	}
 
-	util.SetCredentials(awsCreds, config)
+	if err := util.SetCredentials(awsCreds, config); err != nil {
+		return err
+	}
+	return nil
 }

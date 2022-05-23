@@ -27,6 +27,7 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		util.Exit(err)
 	}
+	util.CleanExit()
 }
 
 func init() {

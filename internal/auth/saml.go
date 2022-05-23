@@ -9,7 +9,7 @@ import (
 )
 
 // GetSamlCreds
-func GetSamlCreds(conf config.SamlConfig) {
+func GetSamlCreds(conf config.SamlConfig) error {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
 		util.Writeln("Config-Section name must be provided if store-profile is enabled")
 		util.Exit(nil)
@@ -28,18 +28,18 @@ func GetSamlCreds(conf config.SamlConfig) {
 
 		t, err := webBrowser.GetSamlLogin(conf)
 		if err != nil {
-			util.Exit(err)
+			return err
 		}
 		user, err := user.Current()
 		if err != nil {
-			util.Exit(err)
+			return err
 		}
 
 		roleObj := &util.AWSRole{RoleARN: conf.BaseConfig.Role, PrincipalARN: conf.PrincipalArn, Name: util.SessionName(user.Username, config.SELF_NAME), Duration: conf.Duration}
 
 		awsCreds, err = LoginStsSaml(t, roleObj)
 		if err != nil {
-			util.Exit(err)
+			return err
 		}
 
 		awsCreds.Version = 1
@@ -47,4 +47,5 @@ func GetSamlCreds(conf config.SamlConfig) {
 	}
 
 	util.SetCredentials(awsCreds, conf)
+	return nil
 }
