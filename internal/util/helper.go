@@ -47,7 +47,7 @@ func SetCredentials(creds *AWSCredentials, config config.SamlConfig) error {
 
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
-			Traceln("Error: %s", err.Error())
+			Errorf("Error: %s", err.Error())
 			return err
 		}
 		return nil
@@ -71,7 +71,7 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 
 	cfg, err := ini.Load(awsConfPath)
 	if err != nil {
-		Writeln("Fail to read file: %v", err)
+		Errorf("Fail to read file: %v", err)
 		Exit(err)
 	}
 	cfg.Section(configSection).Key("aws_access_key_id").SetValue(creds.AWSAccessKey)
@@ -87,7 +87,7 @@ func returnStdOutAsJson(creds AWSCredentials) error {
 
 	jsonBytes, err := json.Marshal(creds)
 	if err != nil {
-		Writeln("Unexpected AWS credential response")
+		Errorf("Unexpected AWS credential response")
 		return err
 	}
 	fmt.Println(string(jsonBytes))
@@ -118,7 +118,7 @@ func IsValid(currentCreds *AWSCredentials, relaodBeforeTime int) bool {
 
 	sess, err := session.NewSession()
 	if err != nil {
-		Writeln("Failed to create aws client session")
+		Errorf("Failed to create aws client session")
 		Exit(err)
 	}
 
@@ -135,7 +135,7 @@ func IsValid(currentCreds *AWSCredentials, relaodBeforeTime int) bool {
 	_, err = svc.GetCallerIdentity(input)
 
 	if err != nil {
-		Writeln("The previous credential isn't valid")
+		Errorf("The previous credential isn't valid")
 	}
 
 	return err == nil && !reloadBeforeExpiry(currentCreds.Expires, relaodBeforeTime)
@@ -156,7 +156,7 @@ func WriteIniSection(role string) error {
 	section := fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(role))
 	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
-		Writeln("Fail to read Ini file: %v", err)
+		Errorf("Fail to read Ini file: %v", err)
 		Exit(err)
 	}
 	if !cfg.HasSection(section) {

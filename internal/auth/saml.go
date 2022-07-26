@@ -11,7 +11,7 @@ import (
 // GetSamlCreds
 func GetSamlCreds(conf config.SamlConfig) error {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
-		util.Writeln("Config-Section name must be provided if store-profile is enabled")
+		util.Debug("Config-Section name must be provided if store-profile is enabled")
 		util.Exit(nil)
 	}
 

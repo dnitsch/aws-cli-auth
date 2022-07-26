@@ -14,7 +14,7 @@ import (
 func TestGetEntryInIni(t *testing.T) {
 	cfg, err := ini.Load("~/.aws-cli-auth.ini")
 	if err != nil {
-		Writeln("Fail to read file: %v", err)
+		Errorf("Fail to read file: %v", err)
 		Exit(err)
 	}
 	section := cfg.Section("roles")
@@ -32,7 +32,7 @@ func TestCreateEntryInIni(t *testing.T) {
 	// config.INI_CONF_SECTION = "unitTestRole"
 
 	if err != nil {
-		Writeln("Fail to read Ini file: %v", err)
+		Errorf("Fail to read Ini file: %v", err)
 		Exit(err)
 	}
 

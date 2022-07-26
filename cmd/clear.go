@@ -32,7 +32,7 @@ func clear(cmd *cobra.Command, args []string) error {
 		if err := web.ClearCache(); err != nil {
 			util.Exit(err)
 		}
-		util.Writeln("Chromium Cache cleared")
+		util.Debugf("Chromium Cache cleared")
 	}
 	secretStore.ClearAll()
 
