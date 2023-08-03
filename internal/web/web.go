@@ -75,6 +75,7 @@ func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
 	wait()
 
 	saml := strings.Split(page.MustElement(`body`).MustText(), "SAMLResponse=")[1]
+	saml = strings.Split(saml, "&")[0]
 	return nurl.QueryUnescape(saml)
 
 }
@@ -95,7 +96,7 @@ func (web *Web) ClearCache() error {
 	return nil
 }
 
-//checkRodProcess gets a list running process
+// checkRodProcess gets a list running process
 // kills any hanging rod browser process from any previous improprely closed sessions
 func checkRodProcess() error {
 	pids := make([]int, 0)
