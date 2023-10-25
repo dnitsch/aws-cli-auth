@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -12,28 +11,23 @@ import (
 
 // Tests need fixing up a bit
 func TestGetEntryInIni(t *testing.T) {
-	cfg, err := ini.Load("~/.aws-cli-auth.ini")
+	cfg, err := ini.Load("../../.aws-cli-auth.ini")
 	if err != nil {
-		Errorf("Fail to read file: %v", err)
-		Exit(err)
+		t.Fatalf("Fail to read file: %v", err)
 	}
-	section := cfg.Section("roles")
+	section := cfg.Section("role")
 	roles := section.ChildSections()
 
-	if len(roles) < 2 {
-		t.Errorf("Not Enough children")
+	if len(roles) != 2 {
+		t.Errorf("Incorrectly parsed INI got %d, wanted: 2", len(roles))
 	}
 }
 
-//
 func TestCreateEntryInIni(t *testing.T) {
-	dir, _ := os.Getwd()
-	cfg, err := ini.Load(ConfigIniFile(dir))
-	// config.INI_CONF_SECTION = "unitTestRole"
+	cfg, err := ini.Load("../../.aws-cli-auth.ini")
 
 	if err != nil {
-		Errorf("Fail to read Ini file: %v", err)
-		Exit(err)
+		t.Fatalf("Fail to read file: %v", err)
 	}
 
 	section := cfg.Section(config.INI_CONF_SECTION) //
@@ -43,7 +37,7 @@ func TestCreateEntryInIni(t *testing.T) {
 	roles := section.ChildSections()
 	subSectionExists := false
 	for _, v := range roles {
-		if v.Name() == fmt.Sprintf("roles.%s", RoleKeyConverter(roleTest)) {
+		if v.Name() == fmt.Sprintf("role.%s", RoleKeyConverter(roleTest)) {
 			subSectionExists = true
 			break
 		}
