@@ -1,11 +1,18 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/dnitsch/aws-cli-auth/internal/auth"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/dnitsch/aws-cli-auth/internal/cmdutils"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/spf13/cobra"
+)
+
+var (
+	ErrUnableToCreateSession = errors.New("sts - cannot start a new session")
 )
 
 var (
@@ -42,12 +49,12 @@ func init() {
 }
 
 func getSaml(cmd *cobra.Command, args []string) error {
-	conf := config.SamlConfig{
+	conf := credentialexchange.SamlConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
 		Duration:     duration,
 		AcsUrl:       acsUrl,
-		BaseConfig: config.BaseConfig{
+		BaseConfig: credentialexchange.BaseConfig{
 			StoreInProfile:       storeInProfile,
 			Role:                 role,
 			CfgSectionName:       cfgSectionName,
@@ -56,7 +63,14 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	if err := auth.GetSamlCreds(conf); err != nil {
+	sess, err := session.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
+	}
+
+	svc := sts.New(sess)
+
+	if err := cmdutils.GetSamlCreds(svc, conf); err != nil {
 		return err
 	}
 	return nil

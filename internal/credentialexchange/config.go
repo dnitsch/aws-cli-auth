@@ -1,4 +1,4 @@
-package config
+package credentialexchange
 
 const (
 	SELF_NAME        = "aws-cli-auth"

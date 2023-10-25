@@ -21,11 +21,8 @@ test_prereq:
 	go install github.com/axw/gocov/gocov@v1.0.0 && \
 	go install github.com/AlekSi/gocov-xml@v1.0.0
 
-tidy: install 
-	go mod tidy
-
 install:
-	go mod vendor
+	go mod tidy
 
 .PHONY: clean
 clean:

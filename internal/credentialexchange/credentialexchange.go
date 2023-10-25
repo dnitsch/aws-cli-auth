@@ -1,33 +1,32 @@
-package auth
+package credentialexchange
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
-	"github.com/pkg/errors"
+)
+
+var (
+	ErrUnableAssume        = errors.New("unable to assume")
+	ErrUnableSessionCreate = errors.New("unable to create a sesion")
 )
 
 // AWSRole aws role attributes
-type AWSRole struct {
+type AWSRoleConfig struct {
 	RoleARN      string
 	PrincipalARN string
 	Name         string
 }
 
-// LoginStsSaml exchanges saml response for STS creds
-func LoginStsSaml(samlResponse string, role *util.AWSRole) (*util.AWSCredentials, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create session")
-	}
+type AuthSamlApi interface {
+	AssumeRoleWithSAML(input *sts.AssumeRoleWithSAMLInput) (*sts.AssumeRoleWithSAMLOutput, error)
+}
 
-	svc := sts.New(sess)
+// LoginStsSaml exchanges saml response for STS creds
+func LoginStsSaml(samlResponse string, role AWSRole, svc AuthSamlApi) (*AWSCredentials, error) {
 
 	params := &sts.AssumeRoleWithSAMLInput{
 		PrincipalArn:    aws.String(role.PrincipalARN), // Required
@@ -38,10 +37,10 @@ func LoginStsSaml(samlResponse string, role *util.AWSRole) (*util.AWSCredentials
 
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to retrieve STS credentials using SAML")
+		return nil, fmt.Errorf("failed to retrieve STS credentials using SAML: %s, %w", err.Error(), ErrUnableAssume)
 	}
 
-	return &util.AWSCredentials{
+	return &AWSCredentials{
 		AWSAccessKey:    aws.StringValue(resp.Credentials.AccessKeyId),
 		AWSSecretKey:    aws.StringValue(resp.Credentials.SecretAccessKey),
 		AWSSessionToken: aws.StringValue(resp.Credentials.SessionToken),
@@ -50,23 +49,22 @@ func LoginStsSaml(samlResponse string, role *util.AWSRole) (*util.AWSCredentials
 	}, nil
 }
 
-func LoginAwsWebToken(username string) (*util.AWSCredentials, error) {
+type authWebTokenApi interface {
+	AssumeRoleWithWebIdentity(input *sts.AssumeRoleWithWebIdentityInput) (*sts.AssumeRoleWithWebIdentityOutput, error)
+}
+
+func LoginAwsWebToken(username string, svc authWebTokenApi) (*AWSCredentials, error) {
 	// var role string
-	sess, err := session.NewSession()
+	r, exists := os.LookupEnv(AWS_ROLE_ARN)
+	if !exists {
+		return nil, fmt.Errorf("roleVar not found, %s is empty", AWS_ROLE_ARN)
+	}
+	token, err := GetWebIdTokenFileContents()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create session")
+		return nil, err
 	}
 
-	svc := sts.New(sess)
-	r, exists := os.LookupEnv(config.AWS_ROLE_ARN)
-	if !exists {
-		util.Exit(fmt.Errorf("Role Var Not Found"))
-	}
-	token, err := util.GetWebIdTokenFileContents()
-	if err != nil {
-		util.Exit(err)
-	}
-	sessionName := util.SessionName(username, config.SELF_NAME)
+	sessionName := SessionName(username, SELF_NAME)
 	input := &sts.AssumeRoleWithWebIdentityInput{
 		RoleArn:          &r,
 		RoleSessionName:  &sessionName,
@@ -75,10 +73,10 @@ func LoginAwsWebToken(username string) (*util.AWSCredentials, error) {
 
 	resp, err := svc.AssumeRoleWithWebIdentity(input)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to retrieve STS credentials using SAML")
+		return nil, fmt.Errorf("failed to retrieve STS credentials using token file: %s, %w", err.Error(), ErrUnableAssume)
 	}
 
-	return &util.AWSCredentials{
+	return &AWSCredentials{
 		AWSAccessKey:    aws.StringValue(resp.Credentials.AccessKeyId),
 		AWSSecretKey:    aws.StringValue(resp.Credentials.SecretAccessKey),
 		AWSSessionToken: aws.StringValue(resp.Credentials.SessionToken),
@@ -87,20 +85,14 @@ func LoginAwsWebToken(username string) (*util.AWSCredentials, error) {
 	}, nil
 }
 
-func AssumeRoleWithCreds(creds *util.AWSCredentials, username, role string) (*util.AWSCredentials, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create session")
-	}
+type authAssumeRoleCredsApi interface {
+	AssumeRole(input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
+}
 
-	specificCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     creds.AWSAccessKey,
-		SecretAccessKey: creds.AWSSecretKey,
-		SessionToken:    creds.AWSSessionToken,
-	})
+// AssumeRoleWithCreds
+func AssumeRoleWithCreds(svc authAssumeRoleCredsApi, username, role string) (*AWSCredentials, error) {
 
-	svc := sts.New(sess, aws.NewConfig().WithCredentials(specificCreds))
-	sessionName := util.SessionName(username, config.SELF_NAME)
+	sessionName := SessionName(username, SELF_NAME)
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &role,
@@ -109,10 +101,10 @@ func AssumeRoleWithCreds(creds *util.AWSCredentials, username, role string) (*ut
 	roleCreds, err := svc.AssumeRole(input)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to retrieve STS credentials using Role Provided")
+		return nil, fmt.Errorf("failed to retrieve STS credentials using Role Provided, %w", ErrUnableAssume)
 	}
 
-	return &util.AWSCredentials{
+	return &AWSCredentials{
 		AWSAccessKey:    aws.StringValue(roleCreds.Credentials.AccessKeyId),
 		AWSSecretKey:    aws.StringValue(roleCreds.Credentials.SecretAccessKey),
 		AWSSessionToken: aws.StringValue(roleCreds.Credentials.SessionToken),

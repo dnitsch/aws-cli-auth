@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/dnitsch/aws-cli-auth/internal/util"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/dnitsch/aws-cli-auth/internal/web"
 	"github.com/spf13/cobra"
 )
@@ -24,19 +25,24 @@ func init() {
 }
 
 func clear(cmd *cobra.Command, args []string) error {
-	web := web.New()
-	secretStore := util.NewSecretStore("")
+
+	web := web.New("")
+
+	secretStore, err := credentialexchange.NewSecretStore("")
+	if err != nil {
+		return err
+	}
 
 	if force {
 
 		if err := web.ClearCache(); err != nil {
-			util.Exit(err)
+			return err
 		}
-		util.Debugf("Chromium Cache cleared")
+		fmt.Fprint(os.Stderr, "Chromium Cache cleared")
 	}
 	secretStore.ClearAll()
 
-	if err := os.Remove(util.ConfigIniFile("")); err != nil {
+	if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
 		return err
 	}
 

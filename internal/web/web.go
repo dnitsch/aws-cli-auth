@@ -5,12 +5,9 @@ import (
 	"net/http"
 	nurl "net/url"
 	"os"
-	"path"
 	"strings"
 
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
-
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
@@ -24,35 +21,32 @@ type Web struct {
 }
 
 // New returns an initialised instance of Web struct
-func New() *Web {
-	ddir := path.Join(util.HomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
+func New(datadir string) *Web {
 
 	l := launcher.New().
 		Headless(false).
 		Devtools(false).
 		Leakless(true)
 
-	url := l.UserDataDir(ddir).MustLaunch()
+	url := l.UserDataDir(datadir).MustLaunch()
 
 	browser := rod.New().
 		ControlURL(url).
 		MustConnect().NoDefaultDevice()
 
 	return &Web{
-		datadir:  &ddir,
+		datadir:  &datadir,
 		launcher: l,
 		browser:  browser,
 	}
 
 }
 
-// GetSamlLogin performs a saml login
-func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
+// GetSamlLogin performs a saml login for a given
+func (web *Web) GetSamlLogin(conf credentialexchange.SamlConfig) (string, error) {
 
 	// do not clean up userdata
-
-	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
-	util.WriteDataDir(*web.datadir)
+	// credentialexchange.WriteDataDir(*web.datadir)
 
 	defer web.browser.MustClose()
 
@@ -110,7 +104,7 @@ func checkRodProcess() error {
 		}
 	}
 	for _, pid := range pids {
-		util.Debugf("Process to be killed as part of clean up: %d", pid)
+		fmt.Fprintf(os.Stderr, "Process to be killed as part of clean up: %d", pid)
 		if proc, _ := os.FindProcess(pid); proc != nil {
 			proc.Kill()
 		}

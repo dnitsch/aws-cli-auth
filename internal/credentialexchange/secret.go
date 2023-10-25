@@ -1,18 +1,35 @@
-// taken from AWS-CLI-OIDC - initially
-package util
+package credentialexchange
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/dnitsch/aws-cli-auth/internal/config"
 	"github.com/werf/lockgate"
 	"github.com/werf/lockgate/pkg/file_locker"
 	"github.com/zalando/go-keyring"
 )
+
+// bit of an antipattern to store types away from their business objects
+type AWSCredentials struct {
+	Version         int
+	AWSAccessKey    string    `json:"AccessKeyId"`
+	AWSSecretKey    string    `json:"SecretAccessKey"`
+	AWSSessionToken string    `json:"SessionToken"`
+	PrincipalARN    string    `json:"-"`
+	Expires         time.Time `json:"Expiration"`
+}
+
+// AWSRole aws role attributes
+type AWSRole struct {
+	RoleARN      string
+	PrincipalARN string
+	Name         string
+	Duration     int
+}
 
 type SecretStore struct {
 	AWSCredentials *AWSCredentials
@@ -23,16 +40,14 @@ type SecretStore struct {
 	lockResource   string
 	secretService  string
 	secretUser     string
-	// keyring        keyring.Keyring
 }
 
-func NewSecretStore(role string) *SecretStore {
-	namer := fmt.Sprintf("%s-%s", config.SELF_NAME, RoleKeyConverter(role))
+func NewSecretStore(role string) (*SecretStore, error) {
+	namer := fmt.Sprintf("%s-%s", SELF_NAME, RoleKeyConverter(role))
 	lockDir := os.TempDir() + "/aws-clie-auth-lock"
 	locker, err := file_locker.NewFileLocker(lockDir)
 	if err != nil {
-		Errorf("Can't setup lock dir: %s", lockDir)
-		Exit(err)
+		return nil, fmt.Errorf("Can't setup lock dir: %s", lockDir)
 	}
 	return &SecretStore{
 		lockDir:       lockDir,
@@ -41,100 +56,119 @@ func NewSecretStore(role string) *SecretStore {
 		secretService: namer,
 		roleArn:       role,
 		secretUser:    os.Getenv("USER"),
-	}
+	}, nil
 }
 
-func (s *SecretStore) load() {
+func (s *SecretStore) load() error {
 	acquired, lock, err := s.locker.Acquire(s.lockResource, lockgate.AcquireOptions{Shared: false, Timeout: 3 * time.Minute})
 	if err != nil {
-		Errorf("Can't load secret due to locked now")
-		Exit(err)
+		// Errorf("Can't load secret due to locked now")
+		// Exit(err)
+		return err
 	}
 	defer func() {
 		if acquired {
 			if err := s.locker.Release(lock); err != nil {
-				Errorf("Can't unlock")
-				Exit(err)
+				// Errorf("Can't unlock")
+				// Exit(err)
+				fmt.Fprintf(os.Stderr, "")
 			}
 		}
 	}()
 
 	if !acquired {
-		Errorf("Can't load secret due to locked now")
-		Exit(err)
+		// Errorf("Can't load secret due to locked now")
+		// Exit(err)
+		return err
 	}
 
 	creds := &AWSCredentials{}
 
 	jsonStr, err := keyring.Get(s.secretService, s.secretUser)
 	if err != nil {
-		if err == keyring.ErrNotFound {
-			return
+		if errors.Is(err, keyring.ErrNotFound) {
+			return nil
 		}
-		Errorf("Can't load secret due to unexpected error: %v", err)
-		Exit(err)
+		// Errorf("Can't load secret due to unexpected error: %v", err)
+		// Exit(err)
+		return err
 	}
 
 	if err := json.Unmarshal([]byte(jsonStr), &creds); err != nil {
-		Errorf("Can't load secret due to broken data: %v", err)
-		Exit(err)
+		// Errorf("Can't load secret due to broken data: %v", err)
+		// Exit(err)
+		return err
 	}
 	if err := WriteIniSection(s.roleArn); err != nil {
-		Errorf("Can't save role to ")
-		Exit(err)
+		// Errorf("Can't save role to ")
+		// Exit(err)
+		return err
 	}
 
 	s.AWSCredentials = creds
 	s.AWSCredJson = jsonStr
+	return nil
 }
 
-func (s *SecretStore) save() {
+func (s *SecretStore) save() error {
 	acquired, lock, err := s.locker.Acquire(s.lockResource, lockgate.AcquireOptions{Shared: false, Timeout: 3 * time.Minute})
 
 	if err != nil {
-		Errorf("Can't save secret due to lock")
-		Exit(err)
+		// Errorf("Can't save secret due to lock")
+		// Exit(err)
+		return err
+
 	}
 
 	defer func() {
 		if acquired {
 			if err := s.locker.Release(lock); err != nil {
-				Errorf("Can't unlock")
-				Exit(err)
+				// Errorf("Can't unlock")
+				// Exit(err)
+				// return err
+				fmt.Fprintf(os.Stderr, "Can't unlock: %s", err)
 			}
 		}
 	}()
 
 	if err := keyring.Set(s.secretService, s.secretUser, s.AWSCredJson); err != nil {
-		Errorf("Can't save secret: %v", err)
-		Exit(err)
+		// Errorf("Can't save secret: %v", err)
+		// Exit(err)
+		return err
 	}
+	return nil
 }
 
 func (s *SecretStore) AWSCredential() (*AWSCredentials, error) {
-	s.load()
+	if err := s.load(); err != nil {
+		return nil, err
+	}
 
 	if s.AWSCredentials == nil && s.AWSCredJson == "" {
-		Infof("Not found the credential for %s", s.roleArn)
+		// Infof("Not found the credential for %s", s.roleArn)
 		return nil, nil
 	}
 
-	Debugf("Got credential from OS secret store for %s", s.roleArn)
+	fmt.Fprintf(os.Stderr, "Got credential from OS secret store for %s", s.roleArn)
 
 	return s.AWSCredentials, nil
 }
 
-func (s *SecretStore) SaveAWSCredential(cred *AWSCredentials) {
+func (s *SecretStore) SaveAWSCredential(cred *AWSCredentials) error {
 	s.AWSCredentials = cred
 	jsonStr, err := json.Marshal(cred)
 	if err != nil {
-		Errorf("Can't save secret due to the broken data")
-		Exit(err)
+		// Errorf("Can't save secret due to the broken data")
+		// Exit(err)
+		return err
 	}
 	s.AWSCredJson = string(jsonStr)
-	s.save()
+	if err := s.save(); err != nil {
+		return err
+	}
 
-	Debug("The AWS credentials has been saved in OS secret store")
+	fmt.Fprint(os.Stderr, "The AWS credentials has been saved in OS secret store")
+	return nil
 }
 
 func (s *SecretStore) Clear() error {
@@ -148,7 +182,7 @@ func (s *SecretStore) ClearAll() error {
 	}
 
 	for _, v := range secretServices {
-		keyring.Delete(fmt.Sprintf("%s-%s", config.SELF_NAME, v), s.secretUser)
+		keyring.Delete(fmt.Sprintf("%s-%s", SELF_NAME, v), s.secretUser)
 	}
 	return nil
 }

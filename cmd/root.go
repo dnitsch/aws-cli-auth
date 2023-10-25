@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
+
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +31,10 @@ Stores them under the $HOME/.aws/credentials file under a specified path or retu
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		util.Exit(err)
+		fmt.Errorf("cli error: %v", err)
+		os.Exit(1)
 	}
-	util.CleanExit()
+	os.Exit(0)
 }
 
 func init() {
@@ -45,11 +46,10 @@ func init() {
 }
 
 func initConfig() {
-	util.IsTraceEnabled = verbose
-	if _, err := os.Stat(util.ConfigIniFile("")); err != nil {
+	if _, err := os.Stat(credentialexchange.ConfigIniFile("")); err != nil {
 		// creating a file
-		rolesInit := []byte(fmt.Sprintf("[%s]\n", config.INI_CONF_SECTION))
-		err := os.WriteFile(util.ConfigIniFile(""), rolesInit, 0644)
+		rolesInit := []byte(fmt.Sprintf("[%s]\n", credentialexchange.INI_CONF_SECTION))
+		err := os.WriteFile(credentialexchange.ConfigIniFile(""), rolesInit, 0644)
 		cobra.CheckErr(err)
 	}
 }
