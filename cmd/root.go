@@ -10,6 +10,11 @@ import (
 )
 
 var (
+	Version  string = "0.0.1"
+	Revision string = "1111aaaa"
+)
+
+var (
 	cfgSectionName     string
 	storeInProfile     bool
 	killHangingProcess bool
@@ -20,6 +25,7 @@ var (
 		Long: `CLI tool for retrieving AWS temporary credentials using SAML providers, or specified method of retrieval - i.e. force AWS_WEB_IDENTITY.
 Useful in situations like CI jobs or containers where multiple env vars might be present.
 Stores them under the $HOME/.aws/credentials file under a specified path or returns the crednetial_process payload for use in config`,
+		Version: fmt.Sprintf("%s-%s", Version, Revision),
 	}
 )
 

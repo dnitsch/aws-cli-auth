@@ -39,8 +39,8 @@ func WriteDataDir(datadir string) {
 	os.MkdirAll(datadir, 0755)
 }
 
-func SessionName(username, self_name string) string {
-	return fmt.Sprintf("%s-%s", username, self_name)
+func SessionName(username, selfName string) string {
+	return fmt.Sprintf("%s-%s", username, selfName)
 }
 
 func SetCredentials(creds *AWSCredentials, config config.SamlConfig) error {

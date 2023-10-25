@@ -1,38 +1,40 @@
 module github.com/dnitsch/aws-cli-auth
 
-go 1.18
+go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.44.62
+	github.com/aws/aws-sdk-go v1.46.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.7.0
 	// github.com/spf13/viper v1.10.1
-	github.com/zalando/go-keyring v0.2.1
+	github.com/zalando/go-keyring v0.2.3
 )
 
 require (
-	github.com/alessio/shellescape v1.4.1 // indirect
-	github.com/danieljoos/wincred v1.1.2 // indirect
+	github.com/alessio/shellescape v1.4.2 // indirect
+	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
-	github.com/google/uuid v1.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/google/uuid v1.3.1 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/ysmood/fetchup v0.2.3 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/gson v0.7.2 // indirect
+	github.com/ysmood/got v0.34.1 // indirect
+	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
+	golang.org/x/crypto v0.14.0 // indirect
 )
 
 require (
-	github.com/go-rod/rod v0.108.1
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/go-rod/rod v0.114.4
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/rs/zerolog v1.27.0
+	github.com/rs/zerolog v1.31.0
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/werf/lockgate v0.0.0-20211004100849-f85d5325b201
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
-	gopkg.in/ini.v1 v1.66.6
+	github.com/werf/lockgate v0.1.1
+	golang.org/x/sys v0.13.0 // indirect
+	gopkg.in/ini.v1 v1.67.0
 )
