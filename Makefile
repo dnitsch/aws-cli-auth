@@ -1,10 +1,10 @@
 OWNER := dnitsch
 NAME := aws-cli-auth
-GIT_TAG := "0.11.11" # is overwritten on 
-VERSION := "v$(GIT_TAG)"
-REVISION := $(shell git rev-parse --short HEAD)
+GIT_TAG := 0.11.11
+VERSION := v$(GIT_TAG)
+REVISION := aaaabbbbb1234
 
-LDFLAGS := -ldflags="-s -w -X \"github.com/dnitsch/aws-cli-auth/cmd.Version=$(VERSION)\" -X \"github.com/dnitsch/aws-cli-auth/cmd.Revision=$(REVISION)\" -extldflags -static"
+LDFLAGS := -ldflags="-s -w -X \"github.com/$(OWNER)/$(NAME)/cmd.Version=$(VERSION)\" -X \"github.com/$(OWNER)/$(NAME)/cmd.Revision=$(REVISION)\" -extldflags -static"
 
 .PHONY: test test_ci tidy install buildprep build buildmac buildwin
 
@@ -51,12 +51,6 @@ tagbuildrelease: tag cross-build release
 
 show_coverage: test
 	go tool cover -html=.coverage/out
-
-
-# release: cross-build
-# 	git tag $(VERSION)
-# 	git push origin $(VERSION)
-# 	OWNER=$(OWNER) NAME=$(NAME) PAT=$(PAT) VERSION=$(VERSION) . hack/release.sh 
 
 .PHONY: deps
 deps:
