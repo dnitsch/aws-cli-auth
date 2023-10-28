@@ -3,11 +3,14 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dnitsch/aws-cli-auth/internal/cmdutils"
 	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
+	"github.com/dnitsch/aws-cli-auth/internal/web"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +23,7 @@ var (
 	principalArn     string
 	acsUrl           string
 	role             string
+	datadir          string
 	duration         int
 	reloadBeforeTime int
 	samlCmd          = &cobra.Command{
@@ -37,6 +41,7 @@ var (
 )
 
 func init() {
+	cobra.OnInitialize(samlInitConfig)
 	samlCmd.PersistentFlags().StringVarP(&providerUrl, "provider", "p", "", "Saml Entity StartSSO Url")
 	samlCmd.MarkPersistentFlagRequired("provider")
 	samlCmd.PersistentFlags().StringVarP(&principalArn, "principal", "", "", "Principal Arn of the SAML IdP in AWS")
@@ -49,6 +54,8 @@ func init() {
 }
 
 func getSaml(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
 	conf := credentialexchange.SamlConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
@@ -63,15 +70,34 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	sess, err := session.NewSession()
+	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
+	os.MkdirAll(datadir, 0755)
+
+	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role)
+	if err != nil {
+		return err
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
 	}
+	svc := sts.NewFromConfig(cfg)
 
-	svc := sts.New(sess)
+	return cmdutils.GetSamlCreds(ctx, svc, secretStore, conf, web.NewWebConf(datadir))
+}
 
-	if err := cmdutils.GetSamlCreds(svc, conf); err != nil {
-		return err
+func samlInitConfig() {
+	if _, err := os.Stat(credentialexchange.ConfigIniFile("")); err != nil {
+		// creating a file
+		rolesInit := []byte(fmt.Sprintf("[%s]\n", credentialexchange.INI_CONF_SECTION))
+		err := os.WriteFile(credentialexchange.ConfigIniFile(""), rolesInit, 0644)
+		cobra.CheckErr(err)
 	}
-	return nil
+
+	datadir = path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
+
+	if _, err := os.Stat(datadir); err != nil {
+		cobra.CheckErr(os.MkdirAll(datadir, 0755))
+	}
 }

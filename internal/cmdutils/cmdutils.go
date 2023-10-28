@@ -1,30 +1,32 @@
 package cmdutils
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/user"
-	"path"
 
 	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/dnitsch/aws-cli-auth/internal/web"
 )
 
 var (
-	ErrMissingArg = errors.New("missing arg")
+	ErrMissingArg       = errors.New("missing arg")
+	ErrUnableToValidate = errors.New("unable to validate token")
 )
 
+type SecretStorageImpl interface {
+	AWSCredential() (*credentialexchange.AWSCredentials, error)
+	Clear() error
+	ClearAll() error
+	SaveAWSCredential(cred *credentialexchange.AWSCredentials) error
+}
+
 // GetSamlCreds
-func GetSamlCreds(svc credentialexchange.AuthSamlApi, conf credentialexchange.SamlConfig) error {
+func GetSamlCreds(ctx context.Context, svc credentialexchange.AuthSamlApi, secretStore SecretStorageImpl, conf credentialexchange.SamlConfig, webConfig *web.WebConfig) error {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
 		// Debug("Config-Section name must be provided if store-profile is enabled")
 		return fmt.Errorf("Config-Section name must be provided if store-profile is enabled %w", ErrMissingArg)
-	}
-
-	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role)
-	if err != nil {
-		return err
 	}
 
 	// Try to reuse stored credential in secret
@@ -33,33 +35,21 @@ func GetSamlCreds(svc credentialexchange.AuthSamlApi, conf credentialexchange.Sa
 		return err
 	}
 
-	// creds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-	// 	AccessKeyID:     storedCreds.AWSAccessKey,
-	// 	SecretAccessKey: storedCreds.AWSSecretKey,
-	// 	SessionToken:    storedCreds.AWSSessionToken,
-	// })
-	// svc.Config.Credentials = creds
-
-	credsValid, err := credentialexchange.IsValid(storedCreds, conf.BaseConfig.ReloadBeforeTime)
+	credsValid, err := credentialexchange.IsValid(ctx, storedCreds, conf.BaseConfig.ReloadBeforeTime, svc)
 	if err != nil {
-		return err
-	}
-	if !credsValid || err != nil {
-		if err := refreshCreds(conf, secretStore, svc); err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to validate: %s, %w", err, ErrUnableToValidate)
 	}
 
-	credentialexchange.SetCredentials(storedCreds, conf)
-	return nil
+	if !credsValid {
+		return refreshCreds(ctx, conf, secretStore, svc, webConfig)
+	}
+
+	return credentialexchange.SetCredentials(storedCreds, conf)
 }
 
-func refreshCreds(conf credentialexchange.SamlConfig, secretStore *credentialexchange.SecretStore, svc credentialexchange.AuthSamlApi) error {
+func refreshCreds(ctx context.Context, conf credentialexchange.SamlConfig, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, webConfig *web.WebConfig) error {
 
-	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
-	os.MkdirAll(datadir, 0755)
-
-	webBrowser := web.New(datadir)
+	webBrowser := web.New(webConfig)
 
 	samlResp, err := webBrowser.GetSamlLogin(conf)
 	if err != nil {
@@ -70,9 +60,13 @@ func refreshCreds(conf credentialexchange.SamlConfig, secretStore *credentialexc
 		return err
 	}
 
-	roleObj := &credentialexchange.AWSRole{RoleARN: conf.BaseConfig.Role, PrincipalARN: conf.PrincipalArn, Name: credentialexchange.SessionName(user.Username, credentialexchange.SELF_NAME), Duration: conf.Duration}
-
-	awsCreds, err := credentialexchange.LoginStsSaml(samlResp, *roleObj, svc)
+	roleObj := credentialexchange.AWSRole{
+		RoleARN:      conf.BaseConfig.Role,
+		PrincipalARN: conf.PrincipalArn,
+		Name:         credentialexchange.SessionName(user.Username, credentialexchange.SELF_NAME),
+		Duration:     conf.Duration,
+	}
+	awsCreds, err := credentialexchange.LoginStsSaml(ctx, samlResp, roleObj, svc)
 	if err != nil {
 		return err
 	}
@@ -81,5 +75,5 @@ func refreshCreds(conf credentialexchange.SamlConfig, secretStore *credentialexc
 	if err := secretStore.SaveAWSCredential(awsCreds); err != nil {
 		return err
 	}
-	return nil
+	return credentialexchange.SetCredentials(awsCreds, conf)
 }

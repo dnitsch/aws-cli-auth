@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os/user"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/spf13/cobra"
 )
@@ -31,12 +29,13 @@ func init() {
 
 func specific(cmd *cobra.Command, args []string) error {
 	var awsCreds *credentialexchange.AWSCredentials
-	sess, err := session.NewSession()
+	ctx := cmd.Context()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
 	}
-
-	svc := sts.New(sess)
+	svc := sts.NewFromConfig(cfg)
 
 	user, err := user.Current()
 
@@ -47,7 +46,7 @@ func specific(cmd *cobra.Command, args []string) error {
 	if method != "" {
 		switch method {
 		case "WEB_ID":
-			awsCreds, err = credentialexchange.LoginAwsWebToken(user.Name, svc)
+			awsCreds, err = credentialexchange.LoginAwsWebToken(ctx, user.Name, svc)
 			if err != nil {
 				return err
 			}
@@ -57,15 +56,15 @@ func specific(cmd *cobra.Command, args []string) error {
 	}
 	config := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{StoreInProfile: storeInProfile}}
 
+	// IF role is provided it can be assumed from the WEB_ID credentials
+	//
 	if role != "" {
-		specificCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-			AccessKeyID:     awsCreds.AWSAccessKey,
-			SecretAccessKey: awsCreds.AWSSecretKey,
-			SessionToken:    awsCreds.AWSSessionToken,
-		})
-
-		svc := sts.New(sess, aws.NewConfig().WithCredentials(specificCreds))
-		awsCreds, err = credentialexchange.AssumeRoleWithCreds(svc, user.Name, role)
+		// svc.Config.Credentials = credentials. (credentials.Value{
+		// 	AccessKeyID:     awsCreds.AWSAccessKey,
+		// 	SecretAccessKey: awsCreds.AWSSecretKey,
+		// 	SessionToken:    awsCreds.AWSSessionToken,
+		// })
+		awsCreds, err = credentialexchange.AssumeRoleWithCreds(ctx, svc, user.Name, role)
 		if err != nil {
 			return err
 		}

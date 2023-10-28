@@ -2,82 +2,112 @@ package web
 
 import (
 	"fmt"
-	"net/http"
 	nurl "net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
 	ps "github.com/mitchellh/go-ps"
 )
 
+type WebConfig struct {
+	datadir  string
+	timeout  int32
+	headless bool
+}
+
+func NewWebConf(datadir string) *WebConfig {
+	return &WebConfig{
+		datadir:  datadir,
+		headless: false,
+		timeout:  120,
+	}
+}
+
+func (wc *WebConfig) WithTimeout(timeoutSeconds int32) *WebConfig {
+	wc.timeout = timeoutSeconds
+	return wc
+}
+
+func (wc *WebConfig) WithHeadless() *WebConfig {
+	wc.headless = true
+	return wc
+}
+
 type Web struct {
-	datadir  *string
+	conf     *WebConfig
 	launcher *launcher.Launcher
 	browser  *rod.Browser
 }
 
 // New returns an initialised instance of Web struct
-func New(datadir string) *Web {
+func New(conf *WebConfig) *Web {
 
 	l := launcher.New().
-		Headless(false).
 		Devtools(false).
+		Headless(conf.headless).
+		UserDataDir(conf.datadir).
 		Leakless(true)
 
-	url := l.UserDataDir(datadir).MustLaunch()
+	url := l.MustLaunch()
 
 	browser := rod.New().
 		ControlURL(url).
 		MustConnect().NoDefaultDevice()
 
 	return &Web{
-		datadir:  &datadir,
+		conf:     conf,
 		launcher: l,
 		browser:  browser,
 	}
-
 }
 
 // GetSamlLogin performs a saml login for a given
 func (web *Web) GetSamlLogin(conf credentialexchange.SamlConfig) (string, error) {
 
 	// do not clean up userdata
-	// credentialexchange.WriteDataDir(*web.datadir)
-
 	defer web.browser.MustClose()
 
-	page := web.browser.MustPage(conf.ProviderUrl)
+	web.browser.MustPage(conf.ProviderUrl)
 
 	router := web.browser.HijackRequests()
 	defer router.MustStop()
 
-	router.MustAdd(conf.AcsUrl, func(ctx *rod.Hijack) {
-		body := ctx.Request.Body()
-		_ = ctx.LoadResponse(http.DefaultClient, true)
-		ctx.Response.SetBody(body)
+	capturedSaml := make(chan string)
+
+	router.MustAdd(fmt.Sprintf("%s*", conf.AcsUrl), func(ctx *rod.Hijack) {
+		// TODO: support both REDIRECT AND POST
+		if ctx.Request.Method() == "POST" || ctx.Request.Method() == "GET" {
+			cp := ctx.Request.Body()
+			capturedSaml <- cp
+		}
 	})
 
 	go router.Run()
 
-	wait := page.EachEvent(func(e *proto.PageFrameRequestedNavigation) (stop bool) {
-		return e.URL == conf.AcsUrl
-	})
-	wait()
-
-	saml := strings.Split(page.MustElement(`body`).MustText(), "SAMLResponse=")[1]
-	saml = strings.Split(saml, "&")[0]
-	return nurl.QueryUnescape(saml)
-
+	// forever loop wait for either a successfully
+	// extracted SAMLResponse
+	//
+	// Timesout after a specified timeout - default 120s
+	for {
+		select {
+		case saml := <-capturedSaml:
+			saml = strings.Split(saml, "SAMLResponse=")[1]
+			saml = strings.Split(saml, "&")[0]
+			return nurl.QueryUnescape(saml)
+		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
+			return "", fmt.Errorf("timed out")
+		}
+	}
 }
 
 func (web *Web) ClearCache() error {
 	errs := []error{}
 
-	if err := os.RemoveAll(*web.datadir); err != nil {
+	if err := os.RemoveAll(web.conf.datadir); err != nil {
 		errs = append(errs, err)
 	}
 	if err := checkRodProcess(); err != nil {

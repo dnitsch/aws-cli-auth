@@ -19,14 +19,14 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(samlInitConfig)
 	clearCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, "If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully")
 	rootCmd.AddCommand(clearCmd)
 }
 
 func clear(cmd *cobra.Command, args []string) error {
 
-	web := web.New("")
+	web := web.New(web.NewWebConf(datadir))
 
 	secretStore, err := credentialexchange.NewSecretStore("")
 	if err != nil {
@@ -34,7 +34,6 @@ func clear(cmd *cobra.Command, args []string) error {
 	}
 
 	if force {
-
 		if err := web.ClearCache(); err != nil {
 			return err
 		}

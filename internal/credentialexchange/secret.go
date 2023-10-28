@@ -13,6 +13,10 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
+var (
+	ErrUnableToLoadAWSCred = errors.New("unable to laod AWS credential")
+)
+
 // bit of an antipattern to store types away from their business objects
 type AWSCredentials struct {
 	Version         int
@@ -141,7 +145,7 @@ func (s *SecretStore) save() error {
 
 func (s *SecretStore) AWSCredential() (*AWSCredentials, error) {
 	if err := s.load(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("secret store: %s, %w", err, ErrUnableToLoadAWSCred)
 	}
 
 	if s.AWSCredentials == nil && s.AWSCredJson == "" {
@@ -167,7 +171,7 @@ func (s *SecretStore) SaveAWSCredential(cred *AWSCredentials) error {
 		return err
 	}
 
-	fmt.Fprint(os.Stderr, "The AWS credentials has been saved in OS secret store")
+	fmt.Fprint(os.Stderr, "The AWS credential has been saved in OS secret store")
 	return nil
 }
 

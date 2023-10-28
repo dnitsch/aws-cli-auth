@@ -10,11 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -46,7 +41,6 @@ func SessionName(username, selfName string) string {
 }
 
 func SetCredentials(creds *AWSCredentials, config SamlConfig) error {
-
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			return err
@@ -62,7 +56,6 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 	if overriddenpath, exists := os.LookupEnv("AWS_SHARED_CREDENTIALS_FILE"); exists {
 		awsConfPath = overriddenpath
 	} else {
-		// os.MkdirAll(datadir, 0755)
 		awsCredsPath := path.Join(HomeDir(), ".aws", "credentials")
 		if _, err := os.Stat(awsCredsPath); os.IsNotExist(err) {
 			os.Mkdir(awsCredsPath, 0655)
@@ -90,7 +83,7 @@ func returnStdOutAsJson(creds AWSCredentials) error {
 		// Errorf("Unexpected AWS credential response")
 		return err
 	}
-	fmt.Println(string(jsonBytes))
+	fmt.Fprint(os.Stdout, string(jsonBytes))
 	return nil
 }
 
@@ -98,7 +91,7 @@ func GetWebIdTokenFileContents() (string, error) {
 	// var content *string
 	file, exists := os.LookupEnv(WEB_ID_TOKEN_VAR)
 	if !exists {
-		return "", fmt.Errorf("FileNotPresent: %s", WEB_ID_TOKEN_VAR)
+		return "", fmt.Errorf("fileNotPresent: %s", WEB_ID_TOKEN_VAR)
 	}
 	content, err := os.ReadFile(file)
 	if err != nil {
@@ -107,54 +100,13 @@ func GetWebIdTokenFileContents() (string, error) {
 	return string(content), nil
 }
 
-type callerIdApi interface {
-	GetCallerIdentity(input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error)
-}
-
-// IsValid checks current credentials and
-// returns them if they are still valid
-// if reloadTimeBefore is less than time left on the creds
-// then it will re-request a login
-func IsValid(currentCreds *AWSCredentials, relaodBeforeTime int) (bool, error) {
-	if currentCreds == nil {
-		return false, nil
-	}
-
-	sess, err := session.NewSession()
-	if err != nil {
-		return false, fmt.Errorf("session error: %s, %w", err, ErrUnableSessionCreate)
-	}
-
-	creds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     currentCreds.AWSAccessKey,
-		SecretAccessKey: currentCreds.AWSSecretKey,
-		SessionToken:    currentCreds.AWSSessionToken,
-	})
-
-	svc := sts.New(sess, aws.NewConfig().WithCredentials(creds))
-	svc.Config.Credentials = creds // aws.NewConfig().WithCredentials(creds)
-	input := &sts.GetCallerIdentityInput{}
-
-	if _, err := svc.GetCallerIdentity(input); err != nil {
-		// Errorf("The previous credential isn't valid")
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == sts.ErrCodeExpiredTokenException {
-				return false, nil
-			}
-		}
-		return false, fmt.Errorf("the previous credential isn't valid: %w", ErrUnableAssume)
-	}
-
-	return !ReloadBeforeExpiry(currentCreds.Expires, relaodBeforeTime), nil
-}
-
 // ReloadBeforeExpiry returns true if the time
 // to expiry is less than the specified time in seconds
 // false if there is more than required time in seconds
 // before needing to recycle credentials
 func ReloadBeforeExpiry(expiry time.Time, reloadBeforeSeconds int) bool {
-	now := time.Now()
-	diff := expiry.Sub(now)
+	now := time.Now().Local()
+	diff := expiry.Local().Sub(now)
 	return diff.Seconds() < float64(reloadBeforeSeconds)
 }
 
@@ -163,7 +115,7 @@ func WriteIniSection(role string) error {
 	section := fmt.Sprintf("%s.%s", INI_CONF_SECTION, RoleKeyConverter(role))
 	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
-		return fmt.Errorf("Fail to read Ini file: %v, %w", err, ErrConfigFailure)
+		return fmt.Errorf("fail to read Ini file: %v, %w", err, ErrConfigFailure)
 	}
 	if !cfg.HasSection(section) {
 		sct, err := cfg.NewSection(section)
