@@ -91,7 +91,7 @@ func GetWebIdTokenFileContents() (string, error) {
 	// var content *string
 	file, exists := os.LookupEnv(WEB_ID_TOKEN_VAR)
 	if !exists {
-		return "", fmt.Errorf("fileNotPresent: %s", WEB_ID_TOKEN_VAR)
+		return "", fmt.Errorf("fileNotPresent: %s, %w", WEB_ID_TOKEN_VAR, ErrMissingEnvVar)
 	}
 	content, err := os.ReadFile(file)
 	if err != nil {

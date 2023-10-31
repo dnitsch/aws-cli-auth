@@ -59,12 +59,7 @@ func specific(cmd *cobra.Command, args []string) error {
 	// IF role is provided it can be assumed from the WEB_ID credentials
 	//
 	if role != "" {
-		// svc.Config.Credentials = credentials. (credentials.Value{
-		// 	AccessKeyID:     awsCreds.AWSAccessKey,
-		// 	SecretAccessKey: awsCreds.AWSSecretKey,
-		// 	SessionToken:    awsCreds.AWSSessionToken,
-		// })
-		awsCreds, err = credentialexchange.AssumeRoleWithCreds(ctx, svc, user.Name, role)
+		awsCreds, err = credentialexchange.AssumeRoleWithCreds(ctx, awsCreds, svc, user.Name, role)
 		if err != nil {
 			return err
 		}

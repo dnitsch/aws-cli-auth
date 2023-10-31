@@ -29,8 +29,7 @@ Stores them under the $HOME/.aws/credentials file under a specified path or retu
 )
 
 func Execute(ctx context.Context) {
-	rootCmd.ExecuteContext(ctx)
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Errorf("cli error: %v", err)
 		os.Exit(1)
 	}

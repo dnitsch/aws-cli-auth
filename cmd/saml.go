@@ -73,7 +73,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
 	os.MkdirAll(datadir, 0755)
 
-	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role)
+	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role, fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter(conf.BaseConfig.Role)), os.TempDir()+"/aws-clie-auth-lock")
 	if err != nil {
 		return err
 	}

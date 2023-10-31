@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	nurl "net/url"
 	"os"
@@ -13,8 +14,14 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
+var (
+	ErrTimedOut = errors.New("timed out waiting for input")
+)
+
+// WebConb
 type WebConfig struct {
-	datadir  string
+	datadir string
+	// timeout value in seconds
 	timeout  int32
 	headless bool
 }
@@ -98,8 +105,8 @@ func (web *Web) GetSamlLogin(conf credentialexchange.SamlConfig) (string, error)
 			saml = strings.Split(saml, "SAMLResponse=")[1]
 			saml = strings.Split(saml, "&")[0]
 			return nurl.QueryUnescape(saml)
-		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
-			return "", fmt.Errorf("timed out")
+		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+			return "", fmt.Errorf("%w", ErrTimedOut)
 		}
 	}
 }

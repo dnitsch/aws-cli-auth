@@ -16,6 +16,7 @@ var (
 	ErrUnableAssume        = errors.New("unable to assume")
 	ErrUnableSessionCreate = errors.New("unable to create a sesion")
 	ErrTokenExpired        = errors.New("token expired")
+	ErrMissingEnvVar       = errors.New("missing env var")
 )
 
 // AWSRole aws role attributes
@@ -23,6 +24,16 @@ type AWSRoleConfig struct {
 	RoleARN      string
 	PrincipalARN string
 	Name         string
+}
+
+// AWSCredentials is a representation of the returned credential
+type AWSCredentials struct {
+	Version         int
+	AWSAccessKey    string    `json:"AccessKeyId"`
+	AWSSecretKey    string    `json:"SecretAccessKey"`
+	AWSSessionToken string    `json:"SessionToken"`
+	PrincipalARN    string    `json:"-"`
+	Expires         time.Time `json:"Expiration"`
 }
 
 type AuthSamlApi interface {
@@ -96,7 +107,7 @@ func LoginAwsWebToken(ctx context.Context, username string, svc authWebTokenApi)
 	// var role string
 	r, exists := os.LookupEnv(AWS_ROLE_ARN)
 	if !exists {
-		return nil, fmt.Errorf("roleVar not found, %s is empty", AWS_ROLE_ARN)
+		return nil, fmt.Errorf("roleVar not found, %s is empty, %w", AWS_ROLE_ARN, ErrMissingEnvVar)
 	}
 	token, err := GetWebIdTokenFileContents()
 	if err != nil {
@@ -128,16 +139,20 @@ type authAssumeRoleCredsApi interface {
 	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
-// AssumeRoleWithCreds
-func AssumeRoleWithCreds(ctx context.Context, svc authAssumeRoleCredsApi, username, role string) (*AWSCredentials, error) {
-
-	sessionName := SessionName(username, SELF_NAME)
+// AssumeRoleWithCreds uses existing creds retrieved from anywhere
+// to pass to a credential provider and assume a specific role
+//
+// Most common use case is role chaining an WeBId role to a specific one
+func AssumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc authAssumeRoleCredsApi, username, role string) (*AWSCredentials, error) {
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &role,
-		RoleSessionName: &sessionName,
+		RoleSessionName: aws.String(SessionName(username, SELF_NAME)),
 	}
-	roleCreds, err := svc.AssumeRole(ctx, input)
+
+	roleCreds, err := svc.AssumeRole(ctx, input, func(o *sts.Options) {
+		o.Credentials = &credsProvider{currentCreds.AWSAccessKey, currentCreds.AWSSecretKey, currentCreds.AWSSessionToken, currentCreds.Expires}
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve STS credentials using Role Provided, %w", ErrUnableAssume)
