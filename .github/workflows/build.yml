@@ -42,7 +42,15 @@ jobs:
           fetch-depth: 1
       - name: install deps
         run: |
-          apt update && apt install -y jq git
+          apt update && apt install -y jq git \
+          # Chromium dependencies
+          libnss3 \
+          libxss1 \
+          libasound2 \
+          libxtst6 \
+          libgtk-3-0 \
+          libgbm1 \
+          ca-certificates
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
