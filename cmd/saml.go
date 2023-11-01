@@ -1,11 +1,21 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path"
 
-	"github.com/dnitsch/aws-cli-auth/internal/auth"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/dnitsch/aws-cli-auth/internal/cmdutils"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
+	"github.com/dnitsch/aws-cli-auth/internal/web"
 	"github.com/spf13/cobra"
+)
+
+var (
+	ErrUnableToCreateSession = errors.New("sts - cannot start a new session")
 )
 
 var (
@@ -13,6 +23,7 @@ var (
 	principalArn     string
 	acsUrl           string
 	role             string
+	datadir          string
 	duration         int
 	reloadBeforeTime int
 	samlCmd          = &cobra.Command{
@@ -30,6 +41,7 @@ var (
 )
 
 func init() {
+	cobra.OnInitialize(samlInitConfig)
 	samlCmd.PersistentFlags().StringVarP(&providerUrl, "provider", "p", "", "Saml Entity StartSSO Url")
 	samlCmd.MarkPersistentFlagRequired("provider")
 	samlCmd.PersistentFlags().StringVarP(&principalArn, "principal", "", "", "Principal Arn of the SAML IdP in AWS")
@@ -42,12 +54,14 @@ func init() {
 }
 
 func getSaml(cmd *cobra.Command, args []string) error {
-	conf := config.SamlConfig{
+	ctx := cmd.Context()
+
+	conf := credentialexchange.SamlConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
 		Duration:     duration,
 		AcsUrl:       acsUrl,
-		BaseConfig: config.BaseConfig{
+		BaseConfig: credentialexchange.BaseConfig{
 			StoreInProfile:       storeInProfile,
 			Role:                 role,
 			CfgSectionName:       cfgSectionName,
@@ -56,8 +70,34 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	if err := auth.GetSamlCreds(conf); err != nil {
+	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
+	os.MkdirAll(datadir, 0755)
+
+	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role, fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter(conf.BaseConfig.Role)), os.TempDir()+"/aws-clie-auth-lock")
+	if err != nil {
 		return err
 	}
-	return nil
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
+	}
+	svc := sts.NewFromConfig(cfg)
+
+	return cmdutils.GetSamlCreds(ctx, svc, secretStore, conf, web.NewWebConf(datadir))
+}
+
+func samlInitConfig() {
+	if _, err := os.Stat(credentialexchange.ConfigIniFile("")); err != nil {
+		// creating a file
+		rolesInit := []byte(fmt.Sprintf("[%s]\n", credentialexchange.INI_CONF_SECTION))
+		err := os.WriteFile(credentialexchange.ConfigIniFile(""), rolesInit, 0644)
+		cobra.CheckErr(err)
+	}
+
+	datadir = path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
+
+	if _, err := os.Stat(datadir); err != nil {
+		cobra.CheckErr(os.MkdirAll(datadir, 0755))
+	}
 }

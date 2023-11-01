@@ -1,7 +1,8 @@
-package util
+package credentialexchange
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
 	ini "gopkg.in/ini.v1"
+)
+
+var (
+	ErrSectionNotFound = errors.New("section not found")
+	ErrConfigFailure   = errors.New("config error")
 )
 
 func HomeDir() string {
@@ -32,22 +33,16 @@ func ConfigIniFile(basePath string) string {
 	} else {
 		base = HomeDir()
 	}
-	return path.Join(base, fmt.Sprintf(".%s.ini", config.SELF_NAME))
-}
-
-func WriteDataDir(datadir string) {
-	os.MkdirAll(datadir, 0755)
+	return path.Join(base, fmt.Sprintf(".%s.ini", SELF_NAME))
 }
 
 func SessionName(username, selfName string) string {
 	return fmt.Sprintf("%s-%s", username, selfName)
 }
 
-func SetCredentials(creds *AWSCredentials, config config.SamlConfig) error {
-
+func SetCredentials(creds *AWSCredentials, config SamlConfig) error {
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
-			Errorf("Error: %s", err.Error())
 			return err
 		}
 		return nil
@@ -61,7 +56,6 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 	if overriddenpath, exists := os.LookupEnv("AWS_SHARED_CREDENTIALS_FILE"); exists {
 		awsConfPath = overriddenpath
 	} else {
-		// os.MkdirAll(datadir, 0755)
 		awsCredsPath := path.Join(HomeDir(), ".aws", "credentials")
 		if _, err := os.Stat(awsCredsPath); os.IsNotExist(err) {
 			os.Mkdir(awsCredsPath, 0655)
@@ -71,8 +65,7 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 
 	cfg, err := ini.Load(awsConfPath)
 	if err != nil {
-		Errorf("Fail to read file: %v", err)
-		Exit(err)
+		return err
 	}
 	cfg.Section(configSection).Key("aws_access_key_id").SetValue(creds.AWSAccessKey)
 	cfg.Section(configSection).Key("aws_secret_access_key").SetValue(creds.AWSSecretKey)
@@ -87,77 +80,42 @@ func returnStdOutAsJson(creds AWSCredentials) error {
 
 	jsonBytes, err := json.Marshal(creds)
 	if err != nil {
-		Errorf("Unexpected AWS credential response")
+		// Errorf("Unexpected AWS credential response")
 		return err
 	}
-	fmt.Println(string(jsonBytes))
+	fmt.Fprint(os.Stdout, string(jsonBytes))
 	return nil
 }
 
 func GetWebIdTokenFileContents() (string, error) {
 	// var content *string
-	file, exists := os.LookupEnv(config.WEB_ID_TOKEN_VAR)
+	file, exists := os.LookupEnv(WEB_ID_TOKEN_VAR)
 	if !exists {
-		Exit(fmt.Errorf("FileNotPresent: %s", config.WEB_ID_TOKEN_VAR))
+		return "", fmt.Errorf("fileNotPresent: %s, %w", WEB_ID_TOKEN_VAR, ErrMissingEnvVar)
 	}
 	content, err := os.ReadFile(file)
 	if err != nil {
-		Exit(err)
+		return "", err
 	}
 	return string(content), nil
 }
 
-// IsValid checks current credentials and
-// returns them if they are still valid
-// if reloadTimeBefore is less than time left on the creds
-// then it will re-request a login
-func IsValid(currentCreds *AWSCredentials, relaodBeforeTime int) bool {
-	if currentCreds == nil {
-		return false
-	}
-
-	sess, err := session.NewSession()
-	if err != nil {
-		Errorf("Failed to create aws client session")
-		Exit(err)
-	}
-
-	creds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     currentCreds.AWSAccessKey,
-		SecretAccessKey: currentCreds.AWSSecretKey,
-		SessionToken:    currentCreds.AWSSessionToken,
-	})
-
-	svc := sts.New(sess, aws.NewConfig().WithCredentials(creds))
-
-	input := &sts.GetCallerIdentityInput{}
-
-	_, err = svc.GetCallerIdentity(input)
-
-	if err != nil {
-		Errorf("The previous credential isn't valid")
-	}
-
-	return err == nil && !reloadBeforeExpiry(currentCreds.Expires, relaodBeforeTime)
-}
-
-// reloadBeforeExpiry returns true if the time
+// ReloadBeforeExpiry returns true if the time
 // to expiry is less than the specified time in seconds
 // false if there is more than required time in seconds
 // before needing to recycle credentials
-func reloadBeforeExpiry(expiry time.Time, reloadBeforeSeconds int) bool {
-	now := time.Now()
-	diff := expiry.Sub(now)
+func ReloadBeforeExpiry(expiry time.Time, reloadBeforeSeconds int) bool {
+	now := time.Now().Local()
+	diff := expiry.Local().Sub(now)
 	return diff.Seconds() < float64(reloadBeforeSeconds)
 }
 
 // WriteIniSection update ini sections in own config file
 func WriteIniSection(role string) error {
-	section := fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(role))
+	section := fmt.Sprintf("%s.%s", INI_CONF_SECTION, RoleKeyConverter(role))
 	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
-		Errorf("Fail to read Ini file: %v", err)
-		Exit(err)
+		return fmt.Errorf("fail to read Ini file: %v, %w", err, ErrConfigFailure)
 	}
 	if !cfg.HasSection(section) {
 		sct, err := cfg.NewSection(section)
@@ -177,13 +135,8 @@ func GetAllIniSections() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, v := range cfg.Section(config.INI_CONF_SECTION).ChildSections() {
-		sections = append(sections, strings.Replace(v.Name(), fmt.Sprintf("%s.", config.INI_CONF_SECTION), "", -1))
+	for _, v := range cfg.Section(INI_CONF_SECTION).ChildSections() {
+		sections = append(sections, strings.Replace(v.Name(), fmt.Sprintf("%s.", INI_CONF_SECTION), "", -1))
 	}
 	return sections, nil
-}
-
-// CleanExit signals 0 exit code and should clean up any current process
-func CleanExit() {
-	os.Exit(0)
 }

@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"os/user"
 
-	"github.com/dnitsch/aws-cli-auth/internal/auth"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/spf13/cobra"
 )
 
@@ -28,12 +28,25 @@ func init() {
 }
 
 func specific(cmd *cobra.Command, args []string) error {
-	var awsCreds *util.AWSCredentials
-	var err error
+	var awsCreds *credentialexchange.AWSCredentials
+	ctx := cmd.Context()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
+	}
+	svc := sts.NewFromConfig(cfg)
+
+	user, err := user.Current()
+
+	if err != nil {
+		return err
+	}
+
 	if method != "" {
 		switch method {
 		case "WEB_ID":
-			awsCreds, err = auth.LoginAwsWebToken(os.Getenv("USER")) // TODO: redo this getUser implementation
+			awsCreds, err = credentialexchange.LoginAwsWebToken(ctx, user.Name, svc)
 			if err != nil {
 				return err
 			}
@@ -41,16 +54,18 @@ func specific(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unsupported Method: %s", method)
 		}
 	}
-	config := config.SamlConfig{BaseConfig: config.BaseConfig{StoreInProfile: storeInProfile}}
+	config := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{StoreInProfile: storeInProfile}}
 
+	// IF role is provided it can be assumed from the WEB_ID credentials
+	//
 	if role != "" {
-		awsCreds, err = auth.AssumeRoleWithCreds(awsCreds, os.Getenv("USER"), role)
+		awsCreds, err = credentialexchange.AssumeRoleWithCreds(ctx, awsCreds, svc, user.Name, role)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := util.SetCredentials(awsCreds, config); err != nil {
+	if err := credentialexchange.SetCredentials(awsCreds, config); err != nil {
 		return err
 	}
 	return nil

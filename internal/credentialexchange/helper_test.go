@@ -1,11 +1,13 @@
-package util
+package credentialexchange_test
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/dnitsch/aws-cli-auth/internal/config"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -30,14 +32,14 @@ func TestCreateEntryInIni(t *testing.T) {
 		t.Fatalf("Fail to read file: %v", err)
 	}
 
-	section := cfg.Section(config.INI_CONF_SECTION) //
-	if !cfg.HasSection(fmt.Sprintf("%s.%s", config.INI_CONF_SECTION, RoleKeyConverter(roleTest))) {
+	section := cfg.Section(credentialexchange.INI_CONF_SECTION) //
+	if !cfg.HasSection(fmt.Sprintf("%s.%s", credentialexchange.INI_CONF_SECTION, credentialexchange.RoleKeyConverter(roleTest))) {
 		t.Errorf("section NOT Exists")
 	}
 	roles := section.ChildSections()
 	subSectionExists := false
 	for _, v := range roles {
-		if v.Name() == fmt.Sprintf("role.%s", RoleKeyConverter(roleTest)) {
+		if v.Name() == fmt.Sprintf("role.%s", credentialexchange.RoleKeyConverter(roleTest)) {
 			subSectionExists = true
 			break
 		}
@@ -52,7 +54,7 @@ func TestReloadBeforeExpirySuccess(t *testing.T) {
 
 	expiry := (time.Now()).Add(time.Second * 305)
 
-	got := reloadBeforeExpiry(expiry, 300)
+	got := credentialexchange.ReloadBeforeExpiry(expiry, 300)
 
 	if got {
 		t.Errorf("Expected %v, got: %v", false, got)
@@ -63,9 +65,38 @@ func TestReloadBeforeExpiryNeedToRefresh(t *testing.T) {
 
 	expiry := (time.Now()).Add(time.Second * 299)
 
-	got := reloadBeforeExpiry(expiry, 300)
+	got := credentialexchange.ReloadBeforeExpiry(expiry, 300)
 
 	if !got {
 		t.Errorf("Expected %v, got: %v", false, got)
+	}
+}
+
+func Test_HomeDirOverwritten(t *testing.T) {
+	ttests := map[string]struct {
+		setUpCleanUp func() func()
+	}{
+		"test1": {
+			setUpCleanUp: func() func() {
+				orignalEnv := os.Environ()
+				os.Setenv("HOME", "./.ignore-delete")
+				return func() {
+					for _, e := range orignalEnv {
+						pair := strings.SplitN(e, "=", 2)
+						os.Setenv(pair[0], pair[1])
+					}
+				}
+			},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			cleanUp := tt.setUpCleanUp()
+			defer cleanUp()
+			got := credentialexchange.HomeDir()
+			if got != "./.ignore-delete" {
+				t.Fail()
+			}
+		})
 	}
 }

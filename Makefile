@@ -9,7 +9,7 @@ LDFLAGS := -ldflags="-s -w -X \"github.com/$(OWNER)/$(NAME)/cmd.Version=$(VERSIO
 .PHONY: test test_ci tidy install buildprep build buildmac buildwin
 
 test: test_prereq
-	go test `go list ./... | grep -v */generated/` -v -mod=readonly -coverprofile=.coverage/out | go-junit-report > .coverage/report-junit.xml && \
+	go test ./... -v -mod=readonly -coverprofile=.coverage/out | go-junit-report > .coverage/report-junit.xml && \
 	gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
 
 test_ci:
@@ -21,11 +21,8 @@ test_prereq:
 	go install github.com/axw/gocov/gocov@v1.0.0 && \
 	go install github.com/AlekSi/gocov-xml@v1.0.0
 
-tidy: install 
-	go mod tidy
-
 install:
-	go mod vendor
+	go mod tidy
 
 .PHONY: clean
 clean:
@@ -49,7 +46,7 @@ tag:
 
 tagbuildrelease: tag cross-build release
 
-show_coverage: test
+show_coverage:
 	go tool cover -html=.coverage/out
 
 .PHONY: deps
