@@ -46,7 +46,7 @@ tag:
 
 tagbuildrelease: tag cross-build release
 
-show_coverage: test
+show_coverage:
 	go tool cover -html=.coverage/out
 
 .PHONY: deps
