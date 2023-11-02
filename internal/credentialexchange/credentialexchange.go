@@ -2,6 +2,7 @@ package credentialexchange
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ var (
 	ErrUnableSessionCreate = errors.New("unable to create a sesion")
 	ErrTokenExpired        = errors.New("token expired")
 	ErrMissingEnvVar       = errors.New("missing env var")
+	ErrUnmarshalCred       = errors.New("unable to unmarshal credential from string")
 )
 
 // AWSRole aws role attributes
@@ -34,6 +36,28 @@ type AWSCredentials struct {
 	AWSSessionToken string    `json:"SessionToken"`
 	PrincipalARN    string    `json:"-"`
 	Expires         time.Time `json:"Expiration"`
+}
+
+func (a *AWSCredentials) FromRoleCredString(cred string) (*AWSCredentials, error) {
+	// RoleCreds can be encapsulated in this function
+	// never used outside of this scope for now
+	type RoleCreds struct {
+		RoleCreds struct {
+			AccessKey    string `json:"accessKeyId"`
+			SecretKey    string `json:"secretAccessKey"`
+			SessionToken string `json:"sessionToken"`
+			Expiration   int64  `json:"expiration"`
+		} `json:"roleCredentials"`
+	}
+	rc := &RoleCreds{}
+	if err := json.Unmarshal([]byte(cred), rc); err != nil {
+		return nil, fmt.Errorf("%s, %w", err, ErrUnmarshalCred)
+	}
+	a.AWSAccessKey = rc.RoleCreds.AccessKey
+	a.AWSSecretKey = rc.RoleCreds.SecretKey
+	a.AWSSessionToken = rc.RoleCreds.SessionToken
+	a.Expires = time.UnixMilli(rc.RoleCreds.Expiration)
+	return a, nil
 }
 
 type AuthSamlApi interface {

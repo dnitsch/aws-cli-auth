@@ -54,7 +54,7 @@ func specific(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unsupported Method: %s", method)
 		}
 	}
-	config := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{StoreInProfile: storeInProfile}}
+	config := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{StoreInProfile: storeInProfile}}
 
 	// IF role is provided it can be assumed from the WEB_ID credentials
 	//

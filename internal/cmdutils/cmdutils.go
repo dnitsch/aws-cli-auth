@@ -22,8 +22,8 @@ type SecretStorageImpl interface {
 	SaveAWSCredential(cred *credentialexchange.AWSCredentials) error
 }
 
-// GetSamlCreds
-func GetSamlCreds(ctx context.Context, svc credentialexchange.AuthSamlApi, secretStore SecretStorageImpl, conf credentialexchange.SamlConfig, webConfig *web.WebConfig) error {
+// GetCredsWebUI
+func GetCredsWebUI(ctx context.Context, svc credentialexchange.AuthSamlApi, secretStore SecretStorageImpl, conf credentialexchange.CredentialConfig, webConfig *web.WebConfig) error {
 	if conf.BaseConfig.CfgSectionName == "" && conf.BaseConfig.StoreInProfile {
 		// Debug("Config-Section name must be provided if store-profile is enabled")
 		return fmt.Errorf("Config-Section name must be provided if store-profile is enabled %w", ErrMissingArg)
@@ -41,13 +41,27 @@ func GetSamlCreds(ctx context.Context, svc credentialexchange.AuthSamlApi, secre
 	}
 
 	if !credsValid {
-		return refreshCreds(ctx, conf, secretStore, svc, webConfig)
+		if conf.IsSso {
+			return refreshAwsSsoCreds(ctx, conf, secretStore, svc, webConfig)
+		}
+		return refreshSamlCreds(ctx, conf, secretStore, svc, webConfig)
 	}
 
 	return credentialexchange.SetCredentials(storedCreds, conf)
 }
 
-func refreshCreds(ctx context.Context, conf credentialexchange.SamlConfig, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, webConfig *web.WebConfig) error {
+func refreshAwsSsoCreds(ctx context.Context, conf credentialexchange.CredentialConfig, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, webConfig *web.WebConfig) error {
+	webBrowser := web.New(webConfig)
+	capturedCreds, err := webBrowser.GetSSOCredentials(conf)
+	if err != nil {
+		return err
+	}
+	awsCreds := &credentialexchange.AWSCredentials{}
+	awsCreds.FromRoleCredString(capturedCreds)
+	return completeCredStorage(secretStore, awsCreds, conf)
+}
+
+func refreshSamlCreds(ctx context.Context, conf credentialexchange.CredentialConfig, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, webConfig *web.WebConfig) error {
 
 	webBrowser := web.New(webConfig)
 
@@ -70,7 +84,10 @@ func refreshCreds(ctx context.Context, conf credentialexchange.SamlConfig, secre
 	if err != nil {
 		return err
 	}
+	return completeCredStorage(secretStore, awsCreds, conf)
+}
 
+func completeCredStorage(secretStore SecretStorageImpl, awsCreds *credentialexchange.AWSCredentials, conf credentialexchange.CredentialConfig) error {
 	awsCreds.Version = 1
 	if err := secretStore.SaveAWSCredential(awsCreds); err != nil {
 		return err

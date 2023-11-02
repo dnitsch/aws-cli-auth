@@ -468,3 +468,53 @@ func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetCredentialFromRoleCreds(t *testing.T) {
+	ttests := map[string]struct {
+		input     string
+		expect    *credentialexchange.AWSCredentials
+		expectErr bool
+		errTyp    error
+	}{
+		"succeeds with escaped format": {
+			"{\"roleCredentials\":{\"accessKeyId\":\"asdas\",\"secretAccessKey\":\"sa/08asc62pun9a\",\"sessionToken\":\"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE\",\"expiration\":1698943755000}}",
+			&credentialexchange.AWSCredentials{
+				AWSAccessKey: "asdas",
+			},
+			false, nil,
+		},
+		"succeeds with unescaped format": {
+			`{"roleCredentials":{"accessKeyId":"asdas","secretAccessKey":"sa/08asc62pun9a","sessionToken":"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE","expiration":1698943755000}}`,
+			&credentialexchange.AWSCredentials{
+				AWSAccessKey: "asdas",
+			},
+			false, nil,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			a := &credentialexchange.AWSCredentials{}
+			got, err := a.FromRoleCredString(tt.input)
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("got <nil>, wanted %s", tt.errTyp)
+				}
+				if !errors.Is(err, tt.errTyp) {
+					t.Errorf("got %s, wanted %s", err, tt.errTyp)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("got %s, wanted <nil>", err)
+			}
+
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AWSAccessKey != tt.expect.AWSAccessKey {
+				t.Fatal("not matched")
+			}
+		})
+	}
+}

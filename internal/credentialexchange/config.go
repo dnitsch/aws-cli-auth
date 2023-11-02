@@ -15,10 +15,14 @@ type BaseConfig struct {
 	ReloadBeforeTime     int
 }
 
-type SamlConfig struct {
-	BaseConfig   BaseConfig
-	ProviderUrl  string
-	PrincipalArn string
-	AcsUrl       string
-	Duration     int
+type CredentialConfig struct {
+	BaseConfig         BaseConfig
+	ProviderUrl        string
+	PrincipalArn       string
+	AcsUrl             string
+	Duration           int
+	IsSso              bool
+	SsoRegion          string
+	SsoUserEndpoint    string
+	SsoCredFedEndpoint string
 }

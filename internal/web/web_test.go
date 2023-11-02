@@ -84,7 +84,7 @@ SAMLResponse=dsicisud99u2ubf92e9euhre&RelayState=
 func Test_WebUI_with_succesful_saml(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/saml", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 
@@ -109,7 +109,7 @@ func Test_WebUI_with_succesful_saml(t *testing.T) {
 func Test_WebUI_timeout_and_return_error(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/saml", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 
@@ -130,7 +130,7 @@ func Test_WebUI_timeout_and_return_error(t *testing.T) {
 func Test_ClearCache(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/unknown", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 

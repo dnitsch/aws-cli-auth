@@ -40,7 +40,7 @@ func SessionName(username, selfName string) string {
 	return fmt.Sprintf("%s-%s", username, selfName)
 }
 
-func SetCredentials(creds *AWSCredentials, config SamlConfig) error {
+func SetCredentials(creds *AWSCredentials, config CredentialConfig) error {
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			return err

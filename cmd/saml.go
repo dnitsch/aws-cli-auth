@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -19,14 +20,18 @@ var (
 )
 
 var (
-	providerUrl      string
-	principalArn     string
-	acsUrl           string
-	role             string
-	datadir          string
-	duration         int
-	reloadBeforeTime int
-	samlCmd          = &cobra.Command{
+	providerUrl        string
+	principalArn       string
+	acsUrl             string
+	isSso              bool
+	ssoRegion          string
+	ssoUserEndpoint    string
+	ssoFedCredEndpoint string
+	role               string
+	datadir            string
+	duration           int
+	reloadBeforeTime   int
+	samlCmd            = &cobra.Command{
 		Use:   "saml <SAML ProviderUrl>",
 		Short: "Get AWS credentials and out to stdout",
 		Long:  `Get AWS credentials and out to stdout through your SAML provider authentication.`,
@@ -45,10 +50,17 @@ func init() {
 	samlCmd.PersistentFlags().StringVarP(&providerUrl, "provider", "p", "", "Saml Entity StartSSO Url")
 	samlCmd.MarkPersistentFlagRequired("provider")
 	samlCmd.PersistentFlags().StringVarP(&principalArn, "principal", "", "", "Principal Arn of the SAML IdP in AWS")
-	samlCmd.MarkPersistentFlagRequired("principal")
 	samlCmd.PersistentFlags().StringVarP(&acsUrl, "acsurl", "a", "https://signin.aws.amazon.com/saml", "Override the default ACS Url, used for checkin the post of the SAMLResponse")
+	samlCmd.PersistentFlags().StringVarP(&ssoUserEndpoint, "sso-user-endpoint", "", "https://portal.sso.%s.amazonaws.com/user", "UserEndpoint in a go style fmt.Sprintf string with a region placeholder")
+	samlCmd.PersistentFlags().StringVarP(&ssoFedCredEndpoint, "sso-fed-endpoint", "", "https://portal.sso.%s.amazonaws.com/federation/credentials/", "FederationCredEndpoint in a go style fmt.Sprintf string with a region placeholder")
+	samlCmd.PersistentFlags().StringVarP(&ssoRegion, "sso-region", "", "eu-west-1", "If using SSO, you must set the region")
 	samlCmd.PersistentFlags().IntVarP(&duration, "max-duration", "d", 900, "Override default max session duration, in seconds, of the role session [900-43200]")
-	samlCmd.MarkPersistentFlagRequired("max-duration")
+	samlCmd.PersistentFlags().BoolVarP(&isSso, "is-sso", "", false, `Enables the new AWS User portal login. 
+	If this option is specified the role specified must be in the *ACCOUNT_ID:ROLE_NAME*
+	
+	e.g.: 12345678910:PowerUser
+	
+	Do not specify the ARN of the role you want to assume.`)
 	samlCmd.PersistentFlags().IntVarP(&reloadBeforeTime, "reload-before", "", 0, "Triggers a credentials refresh before the specified max-duration. Value provided in seconds. Should be less than the max-duration of the session")
 	rootCmd.AddCommand(samlCmd)
 }
@@ -56,11 +68,13 @@ func init() {
 func getSaml(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	conf := credentialexchange.SamlConfig{
+	conf := credentialexchange.CredentialConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
 		Duration:     duration,
 		AcsUrl:       acsUrl,
+		IsSso:        isSso,
+		SsoRegion:    ssoRegion,
 		BaseConfig: credentialexchange.BaseConfig{
 			StoreInProfile:       storeInProfile,
 			Role:                 role,
@@ -68,6 +82,15 @@ func getSaml(cmd *cobra.Command, args []string) error {
 			DoKillHangingProcess: killHangingProcess,
 			ReloadBeforeTime:     reloadBeforeTime,
 		},
+	}
+
+	if isSso {
+		ssoRole := strings.Split(role, ":")
+		if len(ssoRole) > 2 {
+			return fmt.Errorf("incorrectly formatted role for AWS SSO - must only be ACCOUNT:ROLE_NAME")
+		}
+		conf.SsoUserEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/user", conf.SsoRegion)
+		conf.SsoCredFedEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/federation/credentials/", conf.SsoRegion) + fmt.Sprintf("?account_id=%s&role_name=%s&debug=true", ssoRole[0], ssoRole[1])
 	}
 
 	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
@@ -84,7 +107,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	}
 	svc := sts.NewFromConfig(cfg)
 
-	return cmdutils.GetSamlCreds(ctx, svc, secretStore, conf, web.NewWebConf(datadir))
+	return cmdutils.GetCredsWebUI(ctx, svc, secretStore, conf, web.NewWebConf(datadir))
 }
 
 func samlInitConfig() {

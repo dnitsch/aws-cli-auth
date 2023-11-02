@@ -134,8 +134,8 @@ func IdpHandler(t *testing.T, addAwsMock bool) http.Handler {
 	return mux
 }
 
-func testConfig() credentialexchange.SamlConfig {
-	return credentialexchange.SamlConfig{
+func testConfig() credentialexchange.CredentialConfig {
+	return credentialexchange.CredentialConfig{
 		BaseConfig: credentialexchange.BaseConfig{
 			Role:             "arn:aws:iam::1122223334:role/some-role",
 			StoreInProfile:   false,
@@ -184,7 +184,7 @@ func (s *mockSecretApi) SaveAWSCredential(cred *credentialexchange.AWSCredential
 
 func Test_GetSamlCreds_With(t *testing.T) {
 	ttests := map[string]struct {
-		config      func(t *testing.T) credentialexchange.SamlConfig
+		config      func(t *testing.T) credentialexchange.CredentialConfig
 		handler     func(t *testing.T, awsMock bool) http.Handler
 		authApi     func(t *testing.T) credentialexchange.AuthSamlApi
 		secretStore func(t *testing.T) cmdutils.SecretStorageImpl
@@ -192,7 +192,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 		errTyp      error
 	}{
 		"correct config and extracted creds but not valid anymore": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				return testConfig()
 			},
 			handler: IdpHandler,
@@ -251,7 +251,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    nil,
 		},
 		"correct config and extracted creds an IsValid": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				conf := testConfig()
 				conf.BaseConfig.ReloadBeforeTime = 60
 				return conf
@@ -312,7 +312,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    nil,
 		},
 		"mising config section name and --store-in-profile set": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = true
@@ -329,7 +329,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    cmdutils.ErrMissingArg,
 		},
 		"failure on unable to retrieve existing credential": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = false
@@ -350,7 +350,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    credentialexchange.ErrUnableToLoadAWSCred,
 		},
 		"fails on isValid": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = false
@@ -398,7 +398,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 
 			ss := tt.secretStore(t)
 
-			err := cmdutils.GetSamlCreds(
+			err := cmdutils.GetCredsWebUI(
 				context.TODO(), tt.authApi(t), ss, conf,
 				web.NewWebConf(tempDir).WithHeadless().WithTimeout(10))
 
