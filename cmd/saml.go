@@ -56,11 +56,9 @@ func init() {
 	samlCmd.PersistentFlags().StringVarP(&ssoRegion, "sso-region", "", "eu-west-1", "If using SSO, you must set the region")
 	samlCmd.PersistentFlags().IntVarP(&duration, "max-duration", "d", 900, "Override default max session duration, in seconds, of the role session [900-43200]")
 	samlCmd.PersistentFlags().BoolVarP(&isSso, "is-sso", "", false, `Enables the new AWS User portal login. 
-	If this option is specified the role specified must be in the *ACCOUNT_ID:ROLE_NAME*
-	
-	e.g.: 12345678910:PowerUser
-	
-	Do not specify the ARN of the role you want to assume.`)
+If this option is specified the role specified must be in the *ACCOUNT_ID:ROLE_NAME*
+e.g.: 12345678910:PowerUser
+Do not specify the ARN of the role you want to assume.`)
 	samlCmd.PersistentFlags().IntVarP(&reloadBeforeTime, "reload-before", "", 0, "Triggers a credentials refresh before the specified max-duration. Value provided in seconds. Should be less than the max-duration of the session")
 	rootCmd.AddCommand(samlCmd)
 }

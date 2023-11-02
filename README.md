@@ -144,6 +144,19 @@ To give it a quick test.
 aws sts get-caller-identity --profile=nonprod_saml_admin
 ```
 
+### AWS SSO Portal
+
+**NOW** Includes support for AWS User Portal, largely remains the same with a few exceptions/additions:
+
+- `-r|--role`
+  needs to be in the following format `12345678901:AdministratorAccess`
+- `--sso-region`
+  region of your SSO setup
+- `--is-sso`
+  flag to set the flow over AWS SSO
+
+Sample: `aws-cli-auth saml --cfg-section test_sso_portal -p https://your_idp.com/app_id -r 12345678901:AdministratorAccess --sso-region ap-north-1 -d 3600 --is-sso --reload-before 60`
+
 ### AWS Credential Process
 
 [Sourcing credentials with an external process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html) describes how to integrate aws-cli with external tool.
