@@ -91,7 +91,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 
 	if isSso {
 		sr := strings.Split(ssoRole, ":")
-		if len(sr) > 2 {
+		if len(sr) != 2 {
 			return fmt.Errorf("incorrectly formatted role for AWS SSO - must only be ACCOUNT:ROLE_NAME")
 		}
 		conf.SsoUserEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/user", conf.SsoRegion)
