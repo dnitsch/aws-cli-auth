@@ -190,13 +190,12 @@ func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 
 // AssumeRoleInChain loops over all the roles provided
 func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string) (*AWSCredentials, error) {
-	var awsCreds *AWSCredentials
 	for _, r := range roles {
 		c, err := assumeRoleWithCreds(ctx, baseCreds, svc, username, r)
 		if err != nil {
 			return nil, err
 		}
-		awsCreds = c
+		baseCreds = c
 	}
-	return awsCreds, nil
+	return baseCreds, nil
 }
