@@ -61,11 +61,12 @@ func SetCredentials(creds *AWSCredentials, config CredentialConfig) error {
 }
 
 func storeCredentialsInProfile(creds AWSCredentials, configSection string) error {
-	var awsConfPath string
+	basePath := path.Join(HomeDir(), ".aws")
+	awsConfPath := path.Join(basePath, "credentials")
 
-	awsConfPath = path.Join(HomeDir(), ".aws", "credentials")
-	if _, err := os.Stat(awsConfPath); os.IsNotExist(err) {
-		os.Mkdir(awsConfPath, 0655)
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		os.Mkdir(basePath, 0755)
+		os.WriteFile(awsConfPath, []byte(``), 0755)
 	}
 
 	if overriddenpath, exists := os.LookupEnv("AWS_SHARED_CREDENTIALS_FILE"); exists {
