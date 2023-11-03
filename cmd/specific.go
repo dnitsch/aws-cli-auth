@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"os/user"
 
-	"github.com/dnitsch/aws-cli-auth/internal/auth"
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var (
 		Long: `Initiates a specific crednetial provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
 This is useful in CI situations where various authentication forms maybe present from AWS_ACCESS_KEY as env vars to metadata of the node.
 Returns the same JSON object as the call to the AWS cli for any of the sts AssumeRole* commands`,
-		Run: specific,
+		RunE: specific,
 	}
 )
 
@@ -27,28 +27,47 @@ func init() {
 	rootCmd.AddCommand(specificCmd)
 }
 
-func specific(cmd *cobra.Command, args []string) {
-	var awsCreds *util.AWSCredentials
-	var err error
+func specific(cmd *cobra.Command, args []string) error {
+	var awsCreds *credentialexchange.AWSCredentials
+	ctx := cmd.Context()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create session %s, %w", err, ErrUnableToCreateSession)
+	}
+	svc := sts.NewFromConfig(cfg)
+
+	user, err := user.Current()
+
+	if err != nil {
+		return err
+	}
+
 	if method != "" {
 		switch method {
 		case "WEB_ID":
-			awsCreds, err = auth.LoginAwsWebToken(os.Getenv("USER")) // TODO: redo this getUser implementation
+			awsCreds, err = credentialexchange.LoginAwsWebToken(ctx, user.Name, svc)
 			if err != nil {
-				util.Exit(err)
+				return err
 			}
 		default:
-			util.Exit(fmt.Errorf("Unsupported Method: %s", method))
-		}
-	}
-	config := config.SamlConfig{BaseConfig: config.BaseConfig{StoreInProfile: storeInProfile}}
-
-	if role != "" {
-		awsCreds, err = auth.AssumeRoleWithCreds(awsCreds, os.Getenv("USER"), role)
-		if err != nil {
-			util.Exit(err)
+			return fmt.Errorf("unsupported Method: %s", method)
 		}
 	}
 
-	util.SetCredentials(awsCreds, config)
+	config := credentialexchange.CredentialConfig{
+		BaseConfig: credentialexchange.BaseConfig{
+			StoreInProfile: storeInProfile,
+			Username:       user.Username,
+			Role:           role,
+			RoleChain:      credentialexchange.InsertRoleIntoChain(role, roleChain),
+		},
+	}
+
+	awsCreds, err = credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, config.BaseConfig.Username, config.BaseConfig.RoleChain)
+	if err != nil {
+		return err
+	}
+
+	return credentialexchange.SetCredentials(awsCreds, config)
 }

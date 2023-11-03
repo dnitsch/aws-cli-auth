@@ -1,14 +1,15 @@
 OWNER := dnitsch
 NAME := aws-cli-auth
-VERSION := v0.7.7
-REVISION := $(shell git rev-parse --short HEAD)
+GIT_TAG := 0.11.11
+VERSION := v$(GIT_TAG)
+REVISION := aaaabbbbb1234
 
-LDFLAGS := -ldflags="-s -w -X \"github.com/dnitsch/aws-cli-auth/cmd.Version=$(VERSION)\" -X \"github.com/dnitsch/aws-cli-auth/cmd.Revision=$(REVISION)\" -extldflags -static"
+LDFLAGS := -ldflags="-s -w -X \"github.com/$(OWNER)/$(NAME)/cmd.Version=$(VERSION)\" -X \"github.com/$(OWNER)/$(NAME)/cmd.Revision=$(REVISION)\" -extldflags -static"
 
 .PHONY: test test_ci tidy install buildprep build buildmac buildwin
 
 test: test_prereq
-	go test `go list ./... | grep -v */generated/` -v -mod=readonly -coverprofile=.coverage/out | go-junit-report > .coverage/report-junit.xml && \
+	go test ./... -v -mod=readonly -coverprofile=.coverage/out | go-junit-report > .coverage/report-junit.xml && \
 	gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
 
 test_ci:
@@ -20,11 +21,8 @@ test_prereq:
 	go install github.com/axw/gocov/gocov@v1.0.0 && \
 	go install github.com/AlekSi/gocov-xml@v1.0.0
 
-tidy: install 
-	go mod tidy
-
 install:
-	go mod vendor
+	go mod tidy
 
 .PHONY: clean
 clean:
@@ -33,16 +31,23 @@ clean:
 	rm -rf vendor/*
 
 .PHONY: cross-build
+
 cross-build:
 	for os in darwin linux windows; do \
-	    [ $$os = "windows" ] && EXT=".exe"; \
-		GOOS=$$os CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o dist/$(NAME)-$$os$$EXT .; \
+		GOOS=$$os CGO_ENABLED=0 go build -mod=readonly -buildvcs=false $(LDFLAGS) -o dist/$(NAME)-$$os .; \
 	done
 
-release: cross-build
-	git tag $(VERSION)
-	git push origin $(VERSION)
+release:
 	OWNER=$(OWNER) NAME=$(NAME) PAT=$(PAT) VERSION=$(VERSION) . hack/release.sh 
+
+tag: 
+	git tag -a $(VERSION) -m "ci tag release" $(REVISION)
+	git push origin $(VERSION)
+
+tagbuildrelease: tag cross-build release
+
+show_coverage: test
+	go tool cover -html=.coverage/out
 
 .PHONY: deps
 deps:
@@ -56,5 +61,3 @@ dist:
 	$(DIST_DIRS) tar -zcf $(NAME)-$(VERSION)-{}.tar.gz {} \; && \
 	$(DIST_DIRS) zip -r $(NAME)-$(VERSION)-{}.zip {} \; && \
 	cd ..
-
-

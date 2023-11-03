@@ -1,108 +1,169 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	nurl "net/url"
 	"os"
-	"path"
 	"strings"
+	"time"
 
-	"github.com/dnitsch/aws-cli-auth/internal/config"
-	"github.com/dnitsch/aws-cli-auth/internal/util"
-
+	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
 	ps "github.com/mitchellh/go-ps"
 )
 
-type Web struct {
-	datadir *string
-	browser *rod.Browser
+var (
+	ErrTimedOut = errors.New("timed out waiting for input")
+)
+
+// WebConb
+type WebConfig struct {
+	datadir string
+	// timeout value in seconds
+	timeout  int32
+	headless bool
 }
 
-// New returns an initialised instance of Web struct using the default chromium embedded browser
-func New() *Web {
-	ddir := path.Join(util.HomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
-
-	return &Web{
-		datadir: &ddir,
+func NewWebConf(datadir string) *WebConfig {
+	return &WebConfig{
+		datadir:  datadir,
+		headless: false,
+		timeout:  120,
 	}
 }
 
-// WithDefaultLauncher returns the default chromium browser
-func (web *Web) WithDefaultLauncher() *Web {
-
-	l := launcher.New().
-		Headless(false).
-		Devtools(false).
-		Leakless(true)
-
-	url := l.UserDataDir(*web.datadir).MustLaunch()
-
-	browser := rod.New().
-		ControlURL(url).
-		MustConnect().NoDefaultDevice()
-
-	web.browser = browser
-	return web
+func (wc *WebConfig) WithTimeout(timeoutSeconds int32) *WebConfig {
+	wc.timeout = timeoutSeconds
+	return wc
 }
 
-func (web *Web) WithCustomLauncher(execPath string) *Web {
+func (wc *WebConfig) WithHeadless() *WebConfig {
+	wc.headless = true
+	return wc
+}
+
+type Web struct {
+	conf     *WebConfig
+	launcher *launcher.Launcher
+	browser  *rod.Browser
+}
+
+// New returns an initialised instance of Web struct
+func New(conf *WebConfig) *Web {
+
 	l := launcher.New().
-		Bin(execPath).
-		// Set("load-extension", "/Users/dusannitschneider/Library/Application Support/BraveSoftware/Brave-Browser/Default/Extensions/hdokiejnpimakedhajhdlcegeplioahd/4.92.0.1_0").
-		ProfileDir("").
-		Headless(false).
-		Devtools(false)
+		Devtools(false).
+		Headless(conf.headless).
+		UserDataDir(conf.datadir).
+		Leakless(true)
 
 	url := l.MustLaunch()
 
 	browser := rod.New().
 		ControlURL(url).
-		MustConnect()
+		MustConnect().NoDefaultDevice()
 
-	web.browser = browser
-	return web
+	return &Web{
+		conf:     conf,
+		launcher: l,
+		browser:  browser,
+	}
 }
 
-// GetSamlLogin performs a saml login flow in managed browser
-func (web *Web) GetSamlLogin(conf config.SamlConfig) (string, error) {
+// GetSamlLogin performs a saml login for a given
+func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, error) {
 
 	// do not clean up userdata
-	// datadir := path.Join(util.GetHomeDir(), fmt.Sprintf(".%s-data", config.SELF_NAME))
-	util.WriteDataDir(*web.datadir)
-
 	defer web.browser.MustClose()
 
-	page := web.browser.MustPage(conf.ProviderUrl)
+	web.browser.MustPage(conf.ProviderUrl)
 
 	router := web.browser.HijackRequests()
 	defer router.MustStop()
 
-	router.MustAdd(conf.AcsUrl, func(ctx *rod.Hijack) {
-		body := ctx.Request.Body()
-		_ = ctx.LoadResponse(http.DefaultClient, true)
-		ctx.Response.SetBody(body)
+	capturedSaml := make(chan string)
+
+	router.MustAdd(fmt.Sprintf("%s*", conf.AcsUrl), func(ctx *rod.Hijack) {
+		if ctx.Request.Method() == "POST" || ctx.Request.Method() == "GET" {
+			cp := ctx.Request.Body()
+			capturedSaml <- cp
+		}
 	})
 
 	go router.Run()
 
-	wait := page.EachEvent(func(e *proto.PageFrameRequestedNavigation) (stop bool) {
-		return e.URL == conf.AcsUrl
+	// forever loop wait for either a successfully
+	// extracted SAMLResponse
+	//
+	// Timesout after a specified timeout - default 120s
+	for {
+		select {
+		case saml := <-capturedSaml:
+			saml = strings.Split(saml, "SAMLResponse=")[1]
+			saml = strings.Split(saml, "&")[0]
+			return nurl.QueryUnescape(saml)
+		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+			return "", fmt.Errorf("%w", ErrTimedOut)
+		}
+	}
+}
+
+// GetSSOCredentials
+func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (string, error) {
+
+	defer web.browser.MustClose()
+
+	web.browser.MustPage(conf.ProviderUrl)
+	router := web.browser.HijackRequests()
+	defer router.MustStop()
+
+	capturedCreds, loadedUserInfo := make(chan string), make(chan bool)
+
+	router.MustAdd(conf.SsoUserEndpoint, func(ctx *rod.Hijack) {
+		ctx.MustLoadResponse()
+		if ctx.Request.Method() == "GET" {
+			ctx.Response.SetHeader(
+				"Content-Type", "text/html; charset=utf-8",
+				"Content-Location", conf.SsoCredFedEndpoint,
+				"Location", conf.SsoCredFedEndpoint)
+			ctx.Response.Payload().ResponseCode = http.StatusMovedPermanently
+			loadedUserInfo <- true
+		}
 	})
-	wait()
 
-	saml := strings.Split(page.MustElement(`body`).MustText(), "SAMLResponse=")[1]
-	return nurl.QueryUnescape(saml)
+	router.MustAdd(conf.SsoCredFedEndpoint, func(ctx *rod.Hijack) {
+		_ = ctx.LoadResponse(http.DefaultClient, true)
+		if ctx.Request.Method() == "GET" {
+			cp := ctx.Response.Body()
+			capturedCreds <- cp
+		}
+	})
 
+	go router.Run()
+
+	// forever loop wait for either a successfully
+	// extracted Creds
+	//
+	// Timesout after a specified timeout - default 120s
+	for {
+		select {
+		case <-loadedUserInfo:
+			// empty case to ensure user endpoint sets correct clientside cookies
+		case creds := <-capturedCreds:
+			return creds, nil
+		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+			return "", fmt.Errorf("%w", ErrTimedOut)
+		}
+	}
 }
 
 func (web *Web) ClearCache() error {
 	errs := []error{}
 
-	if err := os.RemoveAll(*web.datadir); err != nil {
+	if err := os.RemoveAll(web.conf.datadir); err != nil {
 		errs = append(errs, err)
 	}
 	if err := checkRodProcess(); err != nil {
@@ -115,7 +176,7 @@ func (web *Web) ClearCache() error {
 	return nil
 }
 
-//checkRodProcess gets a list running process
+// checkRodProcess gets a list running process
 // kills any hanging rod browser process from any previous improprely closed sessions
 func checkRodProcess() error {
 	pids := make([]int, 0)
@@ -129,7 +190,7 @@ func checkRodProcess() error {
 		}
 	}
 	for _, pid := range pids {
-		util.Traceln("Process to be killed as part of clean up: %d", pid)
+		fmt.Fprintf(os.Stderr, "Process to be killed as part of clean up: %d", pid)
 		if proc, _ := os.FindProcess(pid); proc != nil {
 			proc.Kill()
 		}
