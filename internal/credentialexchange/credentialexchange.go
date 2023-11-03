@@ -63,6 +63,7 @@ func (a *AWSCredentials) FromRoleCredString(cred string) (*AWSCredentials, error
 type AuthSamlApi interface {
 	AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
 // LoginStsSaml exchanges saml response for STS creds
@@ -159,15 +160,11 @@ func LoginAwsWebToken(ctx context.Context, username string, svc authWebTokenApi)
 	}, nil
 }
 
-type authAssumeRoleCredsApi interface {
-	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
-}
-
 // AssumeRoleWithCreds uses existing creds retrieved from anywhere
 // to pass to a credential provider and assume a specific role
 //
 // Most common use case is role chaining an WeBId role to a specific one
-func AssumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc authAssumeRoleCredsApi, username, role string) (*AWSCredentials, error) {
+func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc AuthSamlApi, username, role string) (*AWSCredentials, error) {
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &role,
@@ -189,4 +186,17 @@ func AssumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 		PrincipalARN:    *roleCreds.AssumedRoleUser.Arn,
 		Expires:         roleCreds.Credentials.Expiration.Local(),
 	}, nil
+}
+
+// AssumeRoleInChain loops over all the roles provided
+func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string) (*AWSCredentials, error) {
+	var awsCreds *AWSCredentials
+	for _, r := range roles {
+		c, err := assumeRoleWithCreds(ctx, baseCreds, svc, username, r)
+		if err != nil {
+			return nil, err
+		}
+		awsCreds = c
+	}
+	return awsCreds, nil
 }

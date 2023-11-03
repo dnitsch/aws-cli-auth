@@ -9,6 +9,8 @@ const (
 
 type BaseConfig struct {
 	Role                 string
+	RoleChain            []string
+	Username             string
 	CfgSectionName       string
 	StoreInProfile       bool
 	DoKillHangingProcess bool
@@ -23,6 +25,7 @@ type CredentialConfig struct {
 	Duration           int
 	IsSso              bool
 	SsoRegion          string
+	SsoRole            string
 	SsoUserEndpoint    string
 	SsoCredFedEndpoint string
 }

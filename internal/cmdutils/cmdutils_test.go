@@ -56,8 +56,6 @@ func AwsMockHandler(t *testing.T, mux *http.ServeMux) http.Handler {
         <RequestId>c6104cbe-af31-11e0-8154-cbc7ccf896c7</RequestId>
     </ResponseMetadata>
 </AssumeRoleWithSAMLResponse>`))
-		// w.Write([]byte(`{"Credentials":{"AccessKeyId":"AWSGFDDFSDESFRFRE123112","Expiration":"1239792839344","SecretAccessKey":"SDFSDJHWUJFWE322342323WEFFDWEF@£423rERVedfvvr342","SessionToken":"fdsdf23r4234werfedsfvfvee43g5r354grtrtv"}}`))
-		// }
 	})
 	return mux
 }
@@ -149,6 +147,7 @@ func testConfig() credentialexchange.CredentialConfig {
 type mockAuthApi struct {
 	assumeRoleWSaml func(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 	getCallId       func(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	assume          func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
 func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error) {
@@ -157,6 +156,10 @@ func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.Assume
 
 func (m *mockAuthApi) GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
 	return m.getCallId(ctx, params, optFns...)
+}
+
+func (m *mockAuthApi) AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	return m.assume(ctx, params, optFns...)
 }
 
 type mockSecretApi struct {
@@ -228,7 +231,20 @@ func Test_GetSamlCreds_With(t *testing.T) {
 						UserId:  aws.String("some-user-id"),
 					}, nil
 				}
-
+				m.assume = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+					return &sts.AssumeRoleOutput{
+						AssumedRoleUser: &types.AssumedRoleUser{
+							AssumedRoleId: aws.String("some-role"),
+							Arn:           aws.String("arn"),
+						},
+						Credentials: &types.Credentials{
+							AccessKeyId:     aws.String("123213"),
+							SecretAccessKey: aws.String("32798hewf"),
+							SessionToken:    aws.String("49hefusdSOM_LONG_TOKEN_HERE"),
+							Expiration:      aws.Time(time.Now().Local().Add(time.Minute * time.Duration(5))),
+						},
+					}, nil
+				}
 				return m
 			},
 			secretStore: func(t *testing.T) cmdutils.SecretStorageImpl {

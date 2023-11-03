@@ -17,6 +17,8 @@ var (
 	cfgSectionName     string
 	storeInProfile     bool
 	killHangingProcess bool
+	role               string
+	roleChain          []string
 	verbose            bool
 	rootCmd            = &cobra.Command{
 		Use:   "aws-cli-auth",
@@ -38,6 +40,7 @@ func Execute(ctx context.Context) {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&role, "role", "r", "", "Set the role you want to assume when SAML or OIDC process completes")
+	rootCmd.PersistentFlags().StringSliceVarP(&roleChain, "role-chain", "", []string{}, "If specified it will assume the roles from the base credentials, in order they are specified in")
 	rootCmd.PersistentFlags().StringVarP(&cfgSectionName, "cfg-section", "", "", "config section name in the yaml config file")
 	rootCmd.PersistentFlags().BoolVarP(&storeInProfile, "store-profile", "s", false, "By default the credentials are returned to stdout to be used by the credential_process. Set this flag to instead store the credentials under a named profile section")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")

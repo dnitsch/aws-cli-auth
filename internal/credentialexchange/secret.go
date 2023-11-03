@@ -5,22 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/user"
 	"strings"
 	"time"
 
 	"github.com/werf/lockgate"
 	"github.com/werf/lockgate/pkg/file_locker"
 	"github.com/zalando/go-keyring"
+	ini "gopkg.in/ini.v1"
 )
 
 var (
-	ErrUnableToLoadAWSCred      = errors.New("unable to laod AWS credential")
-	ErrCannotLockDir            = errors.New("unable to create lock dir")
-	ErrUnableToRetrieveSections = errors.New("unable to retrieve sections")
-	ErrUnableToLoadDueToLock    = errors.New("cannot load secret due to lock error")
-	ErrUnableToAcquireLock      = errors.New("cannot acquire lock")
-	ErrUnmarshallingSecret      = errors.New("cannot unmarshal secret")
+	ErrUnableToLoadAWSCred        = errors.New("unable to laod AWS credential")
+	ErrCannotLockDir              = errors.New("unable to create lock dir")
+	ErrUnableToRetrieveSections   = errors.New("unable to retrieve sections")
+	ErrUnableToLoadDueToLock      = errors.New("cannot load secret due to lock error")
+	ErrUnableToAcquireLock        = errors.New("cannot acquire lock")
+	ErrUnmarshallingSecret        = errors.New("cannot unmarshal secret")
+	ErrFailedToClearSecretStorage = errors.New("failed to clear secret storage on OS")
 )
 
 // AWSRole aws role attributes
@@ -67,13 +68,9 @@ func (k *keyRingImpl) Delete(service, user string) error {
 	return keyring.Delete(service, user)
 }
 
-func NewSecretStore(roleArn, namer, lockDir string) (*SecretStore, error) {
+func NewSecretStore(roleArn, namer, baseDir, username string) (*SecretStore, error) {
+	lockDir := baseDir + "/aws-clie-auth-lock"
 	locker, err := file_locker.NewFileLocker(lockDir)
-	if err != nil {
-		return nil, fmt.Errorf("cannot setup lock dir: %s", lockDir)
-	}
-
-	user, err := user.Current()
 	if err != nil {
 		return nil, fmt.Errorf("cannot setup lock dir: %s", lockDir)
 	}
@@ -85,7 +82,7 @@ func NewSecretStore(roleArn, namer, lockDir string) (*SecretStore, error) {
 		lockResource:  namer,
 		secretService: namer,
 		roleArn:       roleArn,
-		secretUser:    user.Name,
+		secretUser:    username,
 	}, nil
 }
 
@@ -179,14 +176,22 @@ func (s *SecretStore) Clear() error {
 // ClearAll loops through all the sections in the INI file
 // deletes them from the keychain implementation on the OS
 func (s *SecretStore) ClearAll() error {
-	secretServices, err := GetAllIniSections()
+	srvSections := []string{}
+	cfg, err := ini.Load(ConfigIniFile(""))
 	if err != nil {
 		return fmt.Errorf("unable to get sections from ini: %s, %w", err, ErrUnableToRetrieveSections)
 	}
 
-	for _, v := range secretServices {
-		s.keyring.Delete(fmt.Sprintf("%s-%s", SELF_NAME, v), s.secretUser)
+	for _, v := range cfg.Section(INI_CONF_SECTION).ChildSections() {
+		srvSections = append(srvSections, strings.Replace(v.Name(), fmt.Sprintf("%s.", INI_CONF_SECTION), "", -1))
 	}
+
+	for _, v := range srvSections {
+		if err := s.keyring.Delete(fmt.Sprintf("%s-%s", SELF_NAME, v), s.secretUser); err != nil {
+			return fmt.Errorf("%s, %w", err, ErrFailedToClearSecretStorage)
+		}
+	}
+
 	return nil
 }
 
