@@ -9,16 +9,23 @@ const (
 
 type BaseConfig struct {
 	Role                 string
+	RoleChain            []string
+	Username             string
 	CfgSectionName       string
 	StoreInProfile       bool
 	DoKillHangingProcess bool
 	ReloadBeforeTime     int
 }
 
-type SamlConfig struct {
-	BaseConfig   BaseConfig
-	ProviderUrl  string
-	PrincipalArn string
-	AcsUrl       string
-	Duration     int
+type CredentialConfig struct {
+	BaseConfig         BaseConfig
+	ProviderUrl        string
+	PrincipalArn       string
+	AcsUrl             string
+	Duration           int
+	IsSso              bool
+	SsoRegion          string
+	SsoRole            string
+	SsoUserEndpoint    string
+	SsoCredFedEndpoint string
 }

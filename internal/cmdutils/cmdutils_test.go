@@ -56,8 +56,6 @@ func AwsMockHandler(t *testing.T, mux *http.ServeMux) http.Handler {
         <RequestId>c6104cbe-af31-11e0-8154-cbc7ccf896c7</RequestId>
     </ResponseMetadata>
 </AssumeRoleWithSAMLResponse>`))
-		// w.Write([]byte(`{"Credentials":{"AccessKeyId":"AWSGFDDFSDESFRFRE123112","Expiration":"1239792839344","SecretAccessKey":"SDFSDJHWUJFWE322342323WEFFDWEF@£423rERVedfvvr342","SessionToken":"fdsdf23r4234werfedsfvfvee43g5r354grtrtv"}}`))
-		// }
 	})
 	return mux
 }
@@ -134,8 +132,8 @@ func IdpHandler(t *testing.T, addAwsMock bool) http.Handler {
 	return mux
 }
 
-func testConfig() credentialexchange.SamlConfig {
-	return credentialexchange.SamlConfig{
+func testConfig() credentialexchange.CredentialConfig {
+	return credentialexchange.CredentialConfig{
 		BaseConfig: credentialexchange.BaseConfig{
 			Role:             "arn:aws:iam::1122223334:role/some-role",
 			StoreInProfile:   false,
@@ -149,6 +147,7 @@ func testConfig() credentialexchange.SamlConfig {
 type mockAuthApi struct {
 	assumeRoleWSaml func(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 	getCallId       func(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	assume          func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
 func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error) {
@@ -157,6 +156,10 @@ func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.Assume
 
 func (m *mockAuthApi) GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
 	return m.getCallId(ctx, params, optFns...)
+}
+
+func (m *mockAuthApi) AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	return m.assume(ctx, params, optFns...)
 }
 
 type mockSecretApi struct {
@@ -184,7 +187,7 @@ func (s *mockSecretApi) SaveAWSCredential(cred *credentialexchange.AWSCredential
 
 func Test_GetSamlCreds_With(t *testing.T) {
 	ttests := map[string]struct {
-		config      func(t *testing.T) credentialexchange.SamlConfig
+		config      func(t *testing.T) credentialexchange.CredentialConfig
 		handler     func(t *testing.T, awsMock bool) http.Handler
 		authApi     func(t *testing.T) credentialexchange.AuthSamlApi
 		secretStore func(t *testing.T) cmdutils.SecretStorageImpl
@@ -192,7 +195,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 		errTyp      error
 	}{
 		"correct config and extracted creds but not valid anymore": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				return testConfig()
 			},
 			handler: IdpHandler,
@@ -228,7 +231,20 @@ func Test_GetSamlCreds_With(t *testing.T) {
 						UserId:  aws.String("some-user-id"),
 					}, nil
 				}
-
+				m.assume = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+					return &sts.AssumeRoleOutput{
+						AssumedRoleUser: &types.AssumedRoleUser{
+							AssumedRoleId: aws.String("some-role"),
+							Arn:           aws.String("arn"),
+						},
+						Credentials: &types.Credentials{
+							AccessKeyId:     aws.String("123213"),
+							SecretAccessKey: aws.String("32798hewf"),
+							SessionToken:    aws.String("49hefusdSOM_LONG_TOKEN_HERE"),
+							Expiration:      aws.Time(time.Now().Local().Add(time.Minute * time.Duration(5))),
+						},
+					}, nil
+				}
 				return m
 			},
 			secretStore: func(t *testing.T) cmdutils.SecretStorageImpl {
@@ -251,7 +267,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    nil,
 		},
 		"correct config and extracted creds an IsValid": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				conf := testConfig()
 				conf.BaseConfig.ReloadBeforeTime = 60
 				return conf
@@ -312,7 +328,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    nil,
 		},
 		"mising config section name and --store-in-profile set": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = true
@@ -329,7 +345,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    cmdutils.ErrMissingArg,
 		},
 		"failure on unable to retrieve existing credential": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = false
@@ -350,7 +366,7 @@ func Test_GetSamlCreds_With(t *testing.T) {
 			errTyp:    credentialexchange.ErrUnableToLoadAWSCred,
 		},
 		"fails on isValid": {
-			config: func(t *testing.T) credentialexchange.SamlConfig {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
 				tc := testConfig()
 				tc.BaseConfig.CfgSectionName = ""
 				tc.BaseConfig.StoreInProfile = false
@@ -398,7 +414,138 @@ func Test_GetSamlCreds_With(t *testing.T) {
 
 			ss := tt.secretStore(t)
 
-			err := cmdutils.GetSamlCreds(
+			err := cmdutils.GetCredsWebUI(
+				context.TODO(), tt.authApi(t), ss, conf,
+				web.NewWebConf(tempDir).WithHeadless().WithTimeout(10))
+
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("got <nil>, wanted %s", tt.errTyp)
+					return
+				}
+				if !errors.Is(err, tt.errTyp) {
+					t.Errorf("got %s, wanted %s", err, tt.errTyp)
+					return
+				}
+			}
+
+			if err != nil && !tt.expectErr {
+				t.Errorf("got %s, wanted <nil>", err)
+			}
+		})
+	}
+}
+
+func mockSsoHandler(t *testing.T) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Server", "Server")
+		w.Header().Set("X-Amzn-Requestid", "9363fdebc232c348b71c8ba5b59f9a34")
+		w.Write([]byte(``))
+	})
+	mux.HandleFunc("/fed-endpoint", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`{"roleCredentials":{"accessKeyId":"asdas","secretAccessKey":"sa/08asc62pun9a","sessionToken":"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE","expiration":1698943755000}}`))
+	})
+	mux.HandleFunc("/idp-onload", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`<!DOCTYPE html>
+		<html>
+		  <body">
+			<div id="message"></div>
+		  </body>
+		  <script type="text/javascript">
+			document.addEventListener('DOMContentLoaded', function() {
+				setTimeout(() => {window.location.href = "/user"}, 100)
+			}, false);
+		  </script>
+		</html>`))
+	})
+	return mux
+}
+
+func Test_Get_SSO_Creds_with(t *testing.T) {
+	ttests := map[string]struct {
+		config      func(t *testing.T) credentialexchange.CredentialConfig
+		handler     func(t *testing.T) http.Handler
+		authApi     func(t *testing.T) credentialexchange.AuthSamlApi
+		secretStore func(t *testing.T) cmdutils.SecretStorageImpl
+		expectErr   bool
+		errTyp      error
+	}{
+		"correct outcome": {
+			config: func(t *testing.T) credentialexchange.CredentialConfig {
+				return testConfig()
+			},
+			handler: mockSsoHandler,
+			authApi: func(t *testing.T) credentialexchange.AuthSamlApi {
+				m := &mockAuthApi{}
+				m.assumeRoleWSaml = func(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error) {
+					return &sts.AssumeRoleWithSAMLOutput{}, nil
+				}
+
+				m.getCallId = func(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+					// t.Error()
+					return &sts.GetCallerIdentityOutput{}, nil
+				}
+				m.assume = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+					return &sts.AssumeRoleOutput{
+						AssumedRoleUser: &types.AssumedRoleUser{
+							AssumedRoleId: aws.String("some-role"),
+							Arn:           aws.String("arn"),
+						},
+						Credentials: &types.Credentials{
+							AccessKeyId:     aws.String("123213"),
+							SecretAccessKey: aws.String("32798hewf"),
+							SessionToken:    aws.String("49hefusdSOM_LONG_TOKEN_HERE"),
+							Expiration:      aws.Time(time.Now().Local().Add(time.Minute * time.Duration(5))),
+						},
+					}, nil
+				}
+				return m
+			},
+			secretStore: func(t *testing.T) cmdutils.SecretStorageImpl {
+				ss := &mockSecretApi{}
+				ss.mCred = func() (*credentialexchange.AWSCredentials, error) {
+					return &credentialexchange.AWSCredentials{
+						Version:         1,
+						AWSAccessKey:    "3212321",
+						AWSSecretKey:    "23fsd2332",
+						AWSSessionToken: "LONG_TOKEN",
+						Expires:         time.Now().Local().Add(time.Minute * time.Duration(-1)),
+					}, nil
+				}
+				ss.mSave = func(cred *credentialexchange.AWSCredentials) error {
+					return nil
+				}
+				return ss
+			},
+			expectErr: false,
+			errTyp:    nil,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewServer(tt.handler(t))
+			defer ts.Close()
+			conf := tt.config(t)
+			conf.IsSso = true
+			conf.SsoUserEndpoint = fmt.Sprintf("%s/user", ts.URL)
+			conf.SsoCredFedEndpoint = fmt.Sprintf("%s/fed-endpoint", ts.URL)
+			conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
+			conf.AcsUrl = fmt.Sprintf("%s/saml", ts.URL)
+			conf.BaseConfig = credentialexchange.BaseConfig{}
+
+			tempDir, _ := os.MkdirTemp(os.TempDir(), "saml-sso-tester")
+
+			defer func() {
+				os.RemoveAll(tempDir)
+			}()
+
+			ss := tt.secretStore(t)
+
+			err := cmdutils.GetCredsWebUI(
 				context.TODO(), tt.authApi(t), ss, conf,
 				web.NewWebConf(tempDir).WithHeadless().WithTimeout(10))
 

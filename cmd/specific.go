@@ -54,19 +54,20 @@ func specific(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unsupported Method: %s", method)
 		}
 	}
-	config := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{StoreInProfile: storeInProfile}}
 
-	// IF role is provided it can be assumed from the WEB_ID credentials
-	//
-	if role != "" {
-		awsCreds, err = credentialexchange.AssumeRoleWithCreds(ctx, awsCreds, svc, user.Name, role)
-		if err != nil {
-			return err
-		}
+	config := credentialexchange.CredentialConfig{
+		BaseConfig: credentialexchange.BaseConfig{
+			StoreInProfile: storeInProfile,
+			Username:       user.Username,
+			Role:           role,
+			RoleChain:      credentialexchange.InsertRoleIntoChain(role, roleChain),
+		},
 	}
 
-	if err := credentialexchange.SetCredentials(awsCreds, config); err != nil {
+	awsCreds, err = credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, config.BaseConfig.Username, config.BaseConfig.RoleChain)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	return credentialexchange.SetCredentials(awsCreds, config)
 }

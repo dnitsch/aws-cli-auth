@@ -84,7 +84,7 @@ SAMLResponse=dsicisud99u2ubf92e9euhre&RelayState=
 func Test_WebUI_with_succesful_saml(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/saml", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 
@@ -104,12 +104,10 @@ func Test_WebUI_with_succesful_saml(t *testing.T) {
 	}
 }
 
-// 2023-10-27T09:54:59+01:00
-
 func Test_WebUI_timeout_and_return_error(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/saml", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 
@@ -130,7 +128,7 @@ func Test_WebUI_timeout_and_return_error(t *testing.T) {
 func Test_ClearCache(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.SamlConfig{BaseConfig: credentialexchange.BaseConfig{}}
+	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
 	conf.AcsUrl = fmt.Sprintf("%s/unknown", ts.URL)
 	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
 
@@ -146,4 +144,87 @@ func Test_ClearCache(t *testing.T) {
 		t.Errorf("expected <nil>, got: %s", err)
 	}
 
+}
+
+func mockSsoHandler(t *testing.T) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Server", "Server")
+		w.Header().Set("X-Amzn-Requestid", "9363fdebc232c348b71c8ba5b59f9a34")
+		w.Write([]byte(``))
+	})
+	mux.HandleFunc("/fed-endpoint", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`{"roleCredentials":{"accessKeyId":"asdas","secretAccessKey":"sa/08asc62pun9a","sessionToken":"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE","expiration":1698943755000}}`))
+	})
+	mux.HandleFunc("/idp-onload", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`<!DOCTYPE html>
+		<html>
+		  <body">
+			<div id="message"></div>
+		  </body>
+		  <script type="text/javascript">
+			document.addEventListener('DOMContentLoaded', function() {
+				setTimeout(() => {window.location.href = "/user"}, 100)
+			}, false);
+		  </script>
+		</html>`))
+	})
+	return mux
+}
+
+func Test_WebUI_with_succesful_ssoLogin(t *testing.T) {
+	ts := httptest.NewServer(mockSsoHandler(t))
+	defer ts.Close()
+	conf := credentialexchange.CredentialConfig{
+		IsSso:              true,
+		SsoUserEndpoint:    fmt.Sprintf("%s/user", ts.URL),
+		SsoCredFedEndpoint: fmt.Sprintf("%s/fed-endpoint", ts.URL),
+		ProviderUrl:        fmt.Sprintf("%s/idp-onload", ts.URL),
+		AcsUrl:             fmt.Sprintf("%s/saml", ts.URL),
+		BaseConfig:         credentialexchange.BaseConfig{},
+	}
+
+	tempDir, _ := os.MkdirTemp(os.TempDir(), "web-sso-tester")
+
+	defer func() {
+		os.RemoveAll(tempDir)
+	}()
+
+	webUi := web.New(web.NewWebConf(tempDir).WithHeadless().WithTimeout(10))
+	creds, err := webUi.GetSSOCredentials(conf)
+	if err != nil {
+		t.Errorf("expected err to be <nil> got: %s", err)
+	}
+	if creds != `{"roleCredentials":{"accessKeyId":"asdas","secretAccessKey":"sa/08asc62pun9a","sessionToken":"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE","expiration":1698943755000}}` {
+		t.Errorf("incorrect saml returned\n expected \"dsicisud99u2ubf92e9euhre\", got: %s", creds)
+	}
+}
+
+func Test_WebUI_with_timeout_ssoLogin(t *testing.T) {
+	ts := httptest.NewServer(mockSsoHandler(t))
+	defer ts.Close()
+	conf := credentialexchange.CredentialConfig{
+		IsSso:              true,
+		SsoUserEndpoint:    fmt.Sprintf("%s/user", ts.URL),
+		SsoCredFedEndpoint: fmt.Sprintf("%s/fed-endpoint", ts.URL),
+		ProviderUrl:        fmt.Sprintf("%s/idp-onload", ts.URL),
+		AcsUrl:             fmt.Sprintf("%s/saml", ts.URL),
+		BaseConfig:         credentialexchange.BaseConfig{},
+	}
+
+	tempDir, _ := os.MkdirTemp(os.TempDir(), "web-sso-tester")
+
+	defer func() {
+		os.RemoveAll(tempDir)
+	}()
+
+	webUi := web.New(web.NewWebConf(tempDir).WithHeadless().WithTimeout(0))
+	_, err := webUi.GetSSOCredentials(conf)
+
+	if !errors.Is(err, web.ErrTimedOut) {
+		t.Errorf("incorrect error returned\n expected: %s, got: %s", web.ErrTimedOut, err)
+	}
 }

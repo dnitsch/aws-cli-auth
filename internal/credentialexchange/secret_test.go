@@ -141,7 +141,7 @@ name = "arn:aws:iam::111122342343:role/DevAdmin"
 				os.RemoveAll(tmpDir)
 			}()
 
-			crde, err := credentialexchange.NewSecretStore("roleArn", "namer", "lockDir")
+			crde, err := credentialexchange.NewSecretStore("roleArn", "namer", tmpDir, "test-user")
 			if err != nil {
 				t.Fail()
 			}
@@ -219,7 +219,7 @@ name = "arn:aws:iam::111122342343:role/DevAdmin"
 				os.RemoveAll(tmpDir)
 			}()
 
-			crde, errInit := credentialexchange.NewSecretStore("roleArn", "namer", "lockDir")
+			crde, errInit := credentialexchange.NewSecretStore("roleArn", "namer", tmpDir, "test-user")
 
 			if errInit != nil {
 				t.Fatal(errInit)
@@ -229,6 +229,88 @@ name = "arn:aws:iam::111122342343:role/DevAdmin"
 			crde.WithKeyring(tt.keyring(t)).WithLocker(tt.locker(t))
 
 			err := crde.SaveAWSCredential(tt.cred)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("got <nil>, wanted %s", tt.errTyp)
+				}
+				if !errors.Is(err, tt.errTyp) {
+					t.Errorf("got %s, wanted %s", err, tt.errTyp)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("got %s, wanted <nil>", err)
+			}
+
+		})
+	}
+}
+
+func Test_ClearAll_with(t *testing.T) {
+	ttests := map[string]struct {
+		keyring   func(t *testing.T) keyring.Keyring
+		locker    func(t *testing.T) lockgate.Locker
+		errTyp    error
+		expectErr bool
+	}{
+		"correct input": {
+			keyring: func(t *testing.T) keyring.Keyring {
+				k := &mockKeyRing{}
+				k.delete = func(service, user string) error {
+					return nil
+				}
+				return k
+			},
+			locker: func(t *testing.T) lockgate.Locker {
+				l := &mockLocker{}
+				return l
+			},
+			errTyp:    nil,
+			expectErr: false,
+		},
+		"keyring delete error": {
+			keyring: func(t *testing.T) keyring.Keyring {
+				k := &mockKeyRing{}
+				k.delete = func(service, user string) error {
+					return fmt.Errorf("someerror")
+				}
+				return k
+			},
+			locker: func(t *testing.T) lockgate.Locker {
+				l := &mockLocker{}
+				return l
+			},
+			errTyp:    credentialexchange.ErrFailedToClearSecretStorage,
+			expectErr: true,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir, _ := os.MkdirTemp(os.TempDir(), "saml-cred-test")
+			iniFile := path.Join(tmpDir, fmt.Sprintf(".%s.ini", credentialexchange.SELF_NAME))
+			os.WriteFile(iniFile, []byte(`
+[role]
+[role.someotherRole]
+name = "arn:aws:iam::111122342343:role/DevAdmin"
+`), 0777)
+			os.Setenv("HOME", tmpDir)
+			defer func() {
+				os.Clearenv()
+				os.RemoveAll(tmpDir)
+			}()
+
+			crde, errInit := credentialexchange.NewSecretStore("roleArn", "namer", tmpDir, "test-user")
+
+			if errInit != nil {
+				t.Fatal(errInit)
+				return
+			}
+
+			crde.WithKeyring(tt.keyring(t)).WithLocker(tt.locker(t))
+
+			err := crde.ClearAll()
 
 			if tt.expectErr {
 				if err == nil {

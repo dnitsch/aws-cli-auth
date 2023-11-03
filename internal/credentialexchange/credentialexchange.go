@@ -2,6 +2,7 @@ package credentialexchange
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ var (
 	ErrUnableSessionCreate = errors.New("unable to create a sesion")
 	ErrTokenExpired        = errors.New("token expired")
 	ErrMissingEnvVar       = errors.New("missing env var")
+	ErrUnmarshalCred       = errors.New("unable to unmarshal credential from string")
 )
 
 // AWSRole aws role attributes
@@ -36,9 +38,32 @@ type AWSCredentials struct {
 	Expires         time.Time `json:"Expiration"`
 }
 
+func (a *AWSCredentials) FromRoleCredString(cred string) (*AWSCredentials, error) {
+	// RoleCreds can be encapsulated in this function
+	// never used outside of this scope for now
+	type RoleCreds struct {
+		RoleCreds struct {
+			AccessKey    string `json:"accessKeyId"`
+			SecretKey    string `json:"secretAccessKey"`
+			SessionToken string `json:"sessionToken"`
+			Expiration   int64  `json:"expiration"`
+		} `json:"roleCredentials"`
+	}
+	rc := &RoleCreds{}
+	if err := json.Unmarshal([]byte(cred), rc); err != nil {
+		return nil, fmt.Errorf("%s, %w", err, ErrUnmarshalCred)
+	}
+	a.AWSAccessKey = rc.RoleCreds.AccessKey
+	a.AWSSecretKey = rc.RoleCreds.SecretKey
+	a.AWSSessionToken = rc.RoleCreds.SessionToken
+	a.Expires = time.UnixMilli(rc.RoleCreds.Expiration)
+	return a, nil
+}
+
 type AuthSamlApi interface {
 	AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
 // LoginStsSaml exchanges saml response for STS creds
@@ -135,15 +160,11 @@ func LoginAwsWebToken(ctx context.Context, username string, svc authWebTokenApi)
 	}, nil
 }
 
-type authAssumeRoleCredsApi interface {
-	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
-}
-
 // AssumeRoleWithCreds uses existing creds retrieved from anywhere
 // to pass to a credential provider and assume a specific role
 //
 // Most common use case is role chaining an WeBId role to a specific one
-func AssumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc authAssumeRoleCredsApi, username, role string) (*AWSCredentials, error) {
+func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc AuthSamlApi, username, role string) (*AWSCredentials, error) {
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &role,
@@ -165,4 +186,16 @@ func AssumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 		PrincipalARN:    *roleCreds.AssumedRoleUser.Arn,
 		Expires:         roleCreds.Credentials.Expiration.Local(),
 	}, nil
+}
+
+// AssumeRoleInChain loops over all the roles provided
+func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string) (*AWSCredentials, error) {
+	for _, r := range roles {
+		c, err := assumeRoleWithCreds(ctx, baseCreds, svc, username, r)
+		if err != nil {
+			return nil, err
+		}
+		baseCreds = c
+	}
+	return baseCreds, nil
 }

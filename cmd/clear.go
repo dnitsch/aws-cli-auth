@@ -28,7 +28,9 @@ func clear(cmd *cobra.Command, args []string) error {
 
 	web := web.New(web.NewWebConf(datadir))
 
-	secretStore, err := credentialexchange.NewSecretStore("", fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter("")), os.TempDir()+"/aws-clie-auth-lock")
+	secretStore, err := credentialexchange.NewSecretStore("",
+		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter("")),
+		os.TempDir(), "")
 	if err != nil {
 		return err
 	}

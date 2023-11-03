@@ -19,6 +19,7 @@ import (
 type mockAuthApi struct {
 	assumeRoleWSaml func(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 	getCallId       func(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	assume          func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }
 
 func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error) {
@@ -27,6 +28,10 @@ func (m *mockAuthApi) AssumeRoleWithSAML(ctx context.Context, params *sts.Assume
 
 func (m *mockAuthApi) GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
 	return m.getCallId(ctx, params, optFns...)
+}
+
+func (m *mockAuthApi) AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	return m.assume(ctx, params, optFns...)
 }
 
 var mockSuccessAwsCreds = &types.Credentials{
@@ -405,24 +410,16 @@ func Test_LoginAwsWebToken_with(t *testing.T) {
 	}
 }
 
-type mockAssumeRole struct {
-	assume func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
-}
-
-func (m *mockAssumeRole) AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
-	return m.assume(ctx, params, optFns...)
-}
-
 func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 	ttests := map[string]struct {
-		srv       func(t *testing.T) *mockAssumeRole
+		srv       func(t *testing.T) *mockAuthApi
 		currCred  *credentialexchange.AWSCredentials
 		expectErr bool
 		errTyp    error
 	}{
 		"successfully passed in creds from somewhere": {
-			srv: func(t *testing.T) *mockAssumeRole {
-				m := &mockAssumeRole{}
+			srv: func(t *testing.T) *mockAuthApi {
+				m := &mockAuthApi{}
 				m.assume = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
 					return &sts.AssumeRoleOutput{
 						AssumedRoleUser: &types.AssumedRoleUser{Arn: aws.String("somearn")},
@@ -433,8 +430,8 @@ func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 			},
 		},
 		"error on calling AssumeRole API": {
-			srv: func(t *testing.T) *mockAssumeRole {
-				m := &mockAssumeRole{}
+			srv: func(t *testing.T) *mockAuthApi {
+				m := &mockAuthApi{}
 				m.assume = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
 					return nil, fmt.Errorf("some error")
 				}
@@ -446,7 +443,7 @@ func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			got, err := credentialexchange.AssumeRoleWithCreds(context.TODO(), tt.currCred, tt.srv(t), "foo", "barrole")
+			got, err := credentialexchange.AssumeRoleInChain(context.TODO(), tt.currCred, tt.srv(t), "foo", []string{"barrole"})
 
 			if tt.expectErr {
 				if err == nil {
@@ -464,6 +461,56 @@ func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 
 			if got.AWSAccessKey != *mockSuccessAwsCreds.AccessKeyId {
 				t.Fatalf("expected %v, got %v", mockSuccessAwsCreds, got)
+			}
+		})
+	}
+}
+
+func Test_GetCredentialFromRoleCreds(t *testing.T) {
+	ttests := map[string]struct {
+		input     string
+		expect    *credentialexchange.AWSCredentials
+		expectErr bool
+		errTyp    error
+	}{
+		"succeeds with escaped format": {
+			"{\"roleCredentials\":{\"accessKeyId\":\"asdas\",\"secretAccessKey\":\"sa/08asc62pun9a\",\"sessionToken\":\"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE\",\"expiration\":1698943755000}}",
+			&credentialexchange.AWSCredentials{
+				AWSAccessKey: "asdas",
+			},
+			false, nil,
+		},
+		"succeeds with unescaped format": {
+			`{"roleCredentials":{"accessKeyId":"asdas","secretAccessKey":"sa/08asc62pun9a","sessionToken":"somtoken//////////YO4Dm0aJYq4K2rQ9V0B6yJMsKpkc5fo+iUT6nI99cZWmGFE","expiration":1698943755000}}`,
+			&credentialexchange.AWSCredentials{
+				AWSAccessKey: "asdas",
+			},
+			false, nil,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			a := &credentialexchange.AWSCredentials{}
+			got, err := a.FromRoleCredString(tt.input)
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("got <nil>, wanted %s", tt.errTyp)
+				}
+				if !errors.Is(err, tt.errTyp) {
+					t.Errorf("got %s, wanted %s", err, tt.errTyp)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("got %s, wanted <nil>", err)
+			}
+
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AWSAccessKey != tt.expect.AWSAccessKey {
+				t.Fatal("not matched")
 			}
 		})
 	}

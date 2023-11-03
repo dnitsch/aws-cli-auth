@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	ini "gopkg.in/ini.v1"
@@ -40,7 +39,18 @@ func SessionName(username, selfName string) string {
 	return fmt.Sprintf("%s-%s", username, selfName)
 }
 
-func SetCredentials(creds *AWSCredentials, config SamlConfig) error {
+func InsertRoleIntoChain(role string, roleChain []string) []string {
+	// IF role is provided it can be assumed from the WEB_ID credentials
+	// this is to maintain the old implementation
+	if role != "" {
+		// could use this experimental slice Insert
+		// https://pkg.go.dev/golang.org/x/exp/slices#Insert
+		roleChain = append(roleChain[:0], append([]string{role}, roleChain[0:]...)...)
+	}
+	return roleChain
+}
+
+func SetCredentials(creds *AWSCredentials, config CredentialConfig) error {
 	if config.BaseConfig.StoreInProfile {
 		if err := storeCredentialsInProfile(*creds, config.BaseConfig.CfgSectionName); err != nil {
 			return err
@@ -51,16 +61,16 @@ func SetCredentials(creds *AWSCredentials, config SamlConfig) error {
 }
 
 func storeCredentialsInProfile(creds AWSCredentials, configSection string) error {
-	var awsConfPath string
+	basePath := path.Join(HomeDir(), ".aws")
+	awsConfPath := path.Join(basePath, "credentials")
+
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		os.Mkdir(basePath, 0755)
+		os.WriteFile(awsConfPath, []byte(``), 0755)
+	}
 
 	if overriddenpath, exists := os.LookupEnv("AWS_SHARED_CREDENTIALS_FILE"); exists {
 		awsConfPath = overriddenpath
-	} else {
-		awsCredsPath := path.Join(HomeDir(), ".aws", "credentials")
-		if _, err := os.Stat(awsCredsPath); os.IsNotExist(err) {
-			os.Mkdir(awsCredsPath, 0655)
-		}
-		awsConfPath = awsCredsPath
 	}
 
 	cfg, err := ini.Load(awsConfPath)
@@ -127,16 +137,4 @@ func WriteIniSection(role string) error {
 	}
 
 	return nil
-}
-
-func GetAllIniSections() ([]string, error) {
-	sections := []string{}
-	cfg, err := ini.Load(ConfigIniFile(""))
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range cfg.Section(INI_CONF_SECTION).ChildSections() {
-		sections = append(sections, strings.Replace(v.Name(), fmt.Sprintf("%s.", INI_CONF_SECTION), "", -1))
-	}
-	return sections, nil
 }

@@ -3,6 +3,7 @@ package credentialexchange_test
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -96,6 +97,144 @@ func Test_HomeDirOverwritten(t *testing.T) {
 			got := credentialexchange.HomeDir()
 			if got != "./.ignore-delete" {
 				t.Fail()
+			}
+		})
+	}
+}
+
+func Test_InsertIntoRoleSlice_with(t *testing.T) {
+	ttests := map[string]struct {
+		role      string
+		roleChain []string
+		expect    []string
+	}{
+		"chain empty and role specified": {
+			"role", []string{}, []string{"role"},
+		},
+		"chain set and role empty": {
+			"", []string{"rolec1"}, []string{"rolec1"},
+		},
+		"both set and role is always first in list": {
+			"role", []string{"rolec1"}, []string{"role", "rolec1"},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			if got := credentialexchange.InsertRoleIntoChain(tt.role, tt.roleChain); len(got) != len(tt.expect) {
+				t.Errorf("expected: %v, got: %v", tt.expect, got)
+			}
+		})
+	}
+}
+
+func Test_SetCredentials_with(t *testing.T) {
+	ttests := map[string]struct {
+		setup     func() func()
+		conf      credentialexchange.CredentialConfig
+		cred      func() *credentialexchange.AWSCredentials
+		expectErr bool
+	}{
+		"write to creds file": {
+			setup: func() func() {
+				tempDir, _ := os.MkdirTemp(os.TempDir(), "set-creds-tester")
+				os.Setenv("HOME", tempDir)
+				return func() {
+					os.Clearenv()
+					os.RemoveAll(tempDir)
+				}
+			},
+			cred: func() *credentialexchange.AWSCredentials {
+				return mockSuccessCreds
+			},
+			conf: credentialexchange.CredentialConfig{
+				BaseConfig: credentialexchange.BaseConfig{
+					StoreInProfile: true,
+					CfgSectionName: "test-section",
+				},
+			},
+		},
+		"write to stdout": {
+			setup: func() func() {
+				tempDir, _ := os.MkdirTemp(os.TempDir(), "set-creds-tester")
+				os.Setenv("HOME", tempDir)
+				return func() {
+					os.Clearenv()
+					os.RemoveAll(tempDir)
+				}
+			},
+			cred: func() *credentialexchange.AWSCredentials {
+				return mockSuccessCreds
+			},
+			conf: credentialexchange.CredentialConfig{
+				BaseConfig: credentialexchange.BaseConfig{
+					StoreInProfile: false,
+					CfgSectionName: "test-section",
+				},
+			},
+		},
+		"write using AWS_CREDENTIALS_FILE": {
+			setup: func() func() {
+				tempDir, _ := os.MkdirTemp(os.TempDir(), "set-creds-tester")
+				os.Setenv("HOME", tempDir)
+				os.WriteFile(path.Join(tempDir, "creds"), []byte(``), 0777)
+				os.Setenv("AWS_SHARED_CREDENTIALS_FILE", path.Join(tempDir, "creds"))
+				return func() {
+					os.Clearenv()
+					os.RemoveAll(tempDir)
+				}
+			},
+			cred: func() *credentialexchange.AWSCredentials {
+				return mockSuccessCreds
+			},
+			conf: credentialexchange.CredentialConfig{
+				BaseConfig: credentialexchange.BaseConfig{
+					StoreInProfile: true,
+					CfgSectionName: "test-section",
+				},
+			},
+		},
+		// "fail on marshal to stdout": {
+		// 	setup: func() func() {
+		// 		tempDir, _ := os.MkdirTemp(os.TempDir(), "set-creds-tester")
+		// 		os.Setenv("HOME", tempDir)
+		// 		os.WriteFile(path.Join(tempDir, "creds"), []byte(``), 0777)
+		// 		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", path.Join(tempDir, "creds"))
+		// 		return func() {
+		// 			os.Clearenv()
+		// 			os.RemoveAll(tempDir)
+		// 		}
+		// 	},
+		// 	cred: func() *credentialexchange.AWSCredentials {
+		// 		var x interface{}
+		// 		x = &credentialexchange.AWSCredentials{}
+		// 		cred := &credentialexchange.AWSCredentials{
+		// 			PrincipalARN: x,
+		// 		}
+		// 		return cred
+		// 	},
+		// 	conf: credentialexchange.CredentialConfig{
+		// 		BaseConfig: credentialexchange.BaseConfig{
+		// 			StoreInProfile: true,
+		// 			CfgSectionName: "test-section",
+		// 		},
+		// 	},
+		// 	expectErr: true,
+		// },
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			cleanUp := tt.setup()
+
+			defer cleanUp()
+
+			err := credentialexchange.SetCredentials(tt.cred(), tt.conf)
+			if tt.expectErr && err == nil {
+				t.Error("got <nil>, wanted non nil")
+				return
+			}
+
+			if err != nil {
+				t.Errorf("got %s, wanted <nil>", err)
 			}
 		})
 	}
