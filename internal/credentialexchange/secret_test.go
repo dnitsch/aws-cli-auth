@@ -282,8 +282,8 @@ func Test_ClearAll_with(t *testing.T) {
 				l := &mockLocker{}
 				return l
 			},
-			errTyp:    nil,
-			expectErr: false,
+			errTyp:    credentialexchange.ErrFailedToClearSecretStorage,
+			expectErr: true,
 		},
 	}
 	for name, tt := range ttests {
