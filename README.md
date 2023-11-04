@@ -20,6 +20,7 @@ This tool deals with IdP logins via SAML, both into an AWS account directly or v
 
 ---
 > **NOTE**: [aws cli](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sso/login.html) now supports a login via a session into a single AWS portal, it works in a similar fashion except this tool does not store the refreshToken on the device and is meant to be used with `credential_process`
+
 ---
 
 > If you have an OIDC IdP provider set up to AWS you can use this [aws-cli-oidc](https://github.com/openstandia/aws-cli-oidc) and likewise this [saml2aws](https://github.com/Versent/saml2aws) for standard SAML only AWS integrations - standard meaning that your IdP has a standard and flow and a supports programatic MFA submission.
