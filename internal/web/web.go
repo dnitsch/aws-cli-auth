@@ -25,6 +25,7 @@ type WebConfig struct {
 	// timeout value in seconds
 	timeout  int32
 	headless bool
+	leakless bool
 }
 
 func NewWebConf(datadir string) *WebConfig {
@@ -58,7 +59,7 @@ func New(conf *WebConfig) *Web {
 		Devtools(false).
 		Headless(conf.headless).
 		UserDataDir(conf.datadir).
-		Leakless(true)
+		Leakless(conf.leakless)
 
 	url := l.MustLaunch()
 
@@ -76,7 +77,8 @@ func New(conf *WebConfig) *Web {
 // GetSamlLogin performs a saml login for a given
 func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, error) {
 
-	// do not clean up userdata
+	// close browser even on error
+	// should cover most cases even with leakless: false
 	defer web.browser.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
@@ -117,6 +119,7 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 	defer web.browser.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
+
 	router := web.browser.HijackRequests()
 	defer router.MustStop()
 
