@@ -140,7 +140,12 @@ func (s *SecretStore) save() error {
 	if err != nil {
 		return err
 	}
+
 	defer release()
+
+	if err := WriteIniSection(s.roleArn); err != nil {
+		return err
+	}
 
 	return s.keyring.Set(s.secretService, s.secretUser, s.AWSCredJson)
 }

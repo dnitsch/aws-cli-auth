@@ -27,6 +27,7 @@ func init() {
 func clear(cmd *cobra.Command, args []string) error {
 
 	web := web.New(web.NewWebConf(datadir))
+	defer web.MustClose()
 
 	secretStore, err := credentialexchange.NewSecretStore("",
 		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter("")),

@@ -69,7 +69,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	allRoles := credentialexchange.InsertRoleIntoChain(role, roleChain)
 	conf := credentialexchange.CredentialConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,
@@ -81,7 +81,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		BaseConfig: credentialexchange.BaseConfig{
 			StoreInProfile:       storeInProfile,
 			Role:                 role,
-			RoleChain:            credentialexchange.InsertRoleIntoChain(role, roleChain),
+			RoleChain:            allRoles,
 			Username:             user.Username,
 			CfgSectionName:       cfgSectionName,
 			DoKillHangingProcess: killHangingProcess,
@@ -89,11 +89,14 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		},
 	}
 
+	saveRole := ""
 	if isSso {
 		sr := strings.Split(ssoRole, ":")
 		if len(sr) != 2 {
 			return fmt.Errorf("incorrectly formatted role for AWS SSO - must only be ACCOUNT:ROLE_NAME")
 		}
+		saveRole = ssoRole
+
 		conf.SsoUserEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/user", conf.SsoRegion)
 		conf.SsoCredFedEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/federation/credentials/", conf.SsoRegion) + fmt.Sprintf("?account_id=%s&role_name=%s&debug=true", sr[0], sr[1])
 	}
@@ -101,8 +104,12 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
 	os.MkdirAll(datadir, 0755)
 
-	secretStore, err := credentialexchange.NewSecretStore(conf.BaseConfig.Role,
-		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter(conf.BaseConfig.Role)),
+	if len(allRoles) > 0 {
+		saveRole = allRoles[len(allRoles)-1]
+	}
+
+	secretStore, err := credentialexchange.NewSecretStore(saveRole,
+		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter(saveRole)),
 		os.TempDir(), user.Username)
 	if err != nil {
 		return err

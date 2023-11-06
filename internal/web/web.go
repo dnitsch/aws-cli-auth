@@ -79,7 +79,7 @@ func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, 
 
 	// close browser even on error
 	// should cover most cases even with leakless: false
-	defer web.browser.MustClose()
+	defer web.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
 
@@ -116,7 +116,7 @@ func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, 
 // GetSSOCredentials
 func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (string, error) {
 
-	defer web.browser.MustClose()
+	defer web.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
 
@@ -161,6 +161,14 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 			return "", fmt.Errorf("%w", ErrTimedOut)
 		}
 	}
+}
+
+func (web *Web) MustClose() {
+	err := web.browser.Close()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+	}
+	// checkRodProcess()
 }
 
 func (web *Web) ClearCache() error {
