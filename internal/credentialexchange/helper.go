@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	ini "gopkg.in/ini.v1"
@@ -36,7 +37,7 @@ func ConfigIniFile(basePath string) string {
 }
 
 func SessionName(username, selfName string) string {
-	return fmt.Sprintf("%s-%s", username, selfName)
+	return fmt.Sprintf("%s-%s", strings.ReplaceAll(username, `\`, "--"), selfName)
 }
 
 func InsertRoleIntoChain(role string, roleChain []string) []string {

@@ -74,6 +74,11 @@ func New(conf *WebConfig) *Web {
 	}
 }
 
+func (web *Web) WithConfig(conf *WebConfig) *Web {
+	web.conf = conf
+	return web
+}
+
 // GetSamlLogin performs a saml login for a given
 func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, error) {
 
