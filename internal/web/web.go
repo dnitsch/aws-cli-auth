@@ -173,7 +173,6 @@ func (web *Web) MustClose() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 	}
-	// checkRodProcess()
 }
 
 func (web *Web) ClearCache() error {
