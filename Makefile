@@ -34,7 +34,7 @@ clean:
 
 build-win: 
 	for arch in amd64 386; do \
-		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -mod=readonly -buildvcs=false $(LDFLAGS) -o dist/$(NAME)-$$os-$$arch .; \
+		GOOS=windows GOARCH=$$arch CGO_ENABLED=0 go build -mod=readonly -buildvcs=false $(LDFLAGS) -o dist/$(NAME)-windows-$$arch .; \
 	done
 
 cross-build: build-win
