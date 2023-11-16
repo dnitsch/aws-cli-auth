@@ -26,8 +26,6 @@ func init() {
 
 func clear(cmd *cobra.Command, args []string) error {
 
-	web := web.New(web.NewWebConf(datadir))
-
 	secretStore, err := credentialexchange.NewSecretStore("",
 		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter("")),
 		os.TempDir(), "")
@@ -36,11 +34,14 @@ func clear(cmd *cobra.Command, args []string) error {
 	}
 
 	if force {
-		if err := web.ClearCache(); err != nil {
+		w := &web.Web{}
+		w.WithConfig(web.NewWebConf(datadir))
+		if err := w.ClearCache(); err != nil {
 			return err
 		}
 		fmt.Fprint(os.Stderr, "Chromium Cache cleared")
 	}
+
 	secretStore.ClearAll()
 
 	if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {

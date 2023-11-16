@@ -140,7 +140,12 @@ func (s *SecretStore) save() error {
 	if err != nil {
 		return err
 	}
+
 	defer release()
+
+	if err := WriteIniSection(s.roleArn); err != nil {
+		return err
+	}
 
 	return s.keyring.Set(s.secretService, s.secretUser, s.AWSCredJson)
 }
@@ -153,8 +158,6 @@ func (s *SecretStore) AWSCredential() (*AWSCredentials, error) {
 	if s.AWSCredentials == nil && s.AWSCredJson == "" {
 		return nil, nil
 	}
-
-	fmt.Fprintf(os.Stderr, "Got credential from OS secret store for %s", s.roleArn)
 
 	return s.AWSCredentials, nil
 }

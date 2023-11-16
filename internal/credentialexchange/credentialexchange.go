@@ -176,7 +176,7 @@ func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve STS credentials using Role Provided, %w", ErrUnableAssume)
+		return nil, fmt.Errorf("failed to retrieve STS credentials using Role Provided: %s, %w", err, ErrUnableAssume)
 	}
 
 	return &AWSCredentials{

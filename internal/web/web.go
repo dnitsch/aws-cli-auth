@@ -74,12 +74,17 @@ func New(conf *WebConfig) *Web {
 	}
 }
 
+func (web *Web) WithConfig(conf *WebConfig) *Web {
+	web.conf = conf
+	return web
+}
+
 // GetSamlLogin performs a saml login for a given
 func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, error) {
 
 	// close browser even on error
 	// should cover most cases even with leakless: false
-	defer web.browser.MustClose()
+	defer web.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
 
@@ -116,7 +121,7 @@ func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, 
 // GetSSOCredentials
 func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (string, error) {
 
-	defer web.browser.MustClose()
+	defer web.MustClose()
 
 	web.browser.MustPage(conf.ProviderUrl)
 
@@ -160,6 +165,13 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
 			return "", fmt.Errorf("%w", ErrTimedOut)
 		}
+	}
+}
+
+func (web *Web) MustClose() {
+	err := web.browser.Close()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
 	}
 }
 
