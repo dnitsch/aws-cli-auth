@@ -159,8 +159,6 @@ func (s *SecretStore) AWSCredential() (*AWSCredentials, error) {
 		return nil, nil
 	}
 
-	fmt.Fprintf(os.Stderr, "Got credential from OS secret store for %s", s.roleArn)
-
 	return s.AWSCredentials, nil
 }
 
