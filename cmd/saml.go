@@ -89,7 +89,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	saveRole := ""
+	saveRole := role
 	if isSso {
 		sr := strings.Split(ssoRole, ":")
 		if len(sr) != 2 {

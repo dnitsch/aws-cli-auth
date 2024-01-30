@@ -109,13 +109,13 @@ func Test_InsertIntoRoleSlice_with(t *testing.T) {
 		expect    []string
 	}{
 		"chain empty and role specified": {
-			"role", []string{}, []string{"role"},
+			"role", []string{}, []string{},
 		},
 		"chain set and role empty": {
 			"", []string{"rolec1"}, []string{"rolec1"},
 		},
 		"both set and role is always first in list": {
-			"role", []string{"rolec1"}, []string{"role", "rolec1"},
+			"role", []string{"rolec1"}, []string{"rolec1"},
 		},
 	}
 	for name, tt := range ttests {

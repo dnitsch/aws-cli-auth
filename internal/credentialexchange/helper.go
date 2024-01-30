@@ -43,12 +43,14 @@ func SessionName(username, selfName string) string {
 func InsertRoleIntoChain(role string, roleChain []string) []string {
 	// IF role is provided it can be assumed from the WEB_ID credentials
 	// this is to maintain the old implementation
-	if role != "" {
-		// could use this experimental slice Insert
-		// https://pkg.go.dev/golang.org/x/exp/slices#Insert
-		roleChain = append(roleChain[:0], append([]string{role}, roleChain[0:]...)...)
+	rc := []string{}
+	for _, r := range roleChain {
+		if r != role {
+			rc = append(rc, r)
+		}
 	}
-	return roleChain
+
+	return rc
 }
 
 func SetCredentials(creds *AWSCredentials, config CredentialConfig) error {
