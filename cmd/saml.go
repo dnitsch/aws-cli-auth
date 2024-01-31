@@ -69,7 +69,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	allRoles := credentialexchange.InsertRoleIntoChain(role, roleChain)
+	allRoles := credentialexchange.MergeRoleChain(role, roleChain, isSso)
 	conf := credentialexchange.CredentialConfig{
 		ProviderUrl:  providerUrl,
 		PrincipalArn: principalArn,

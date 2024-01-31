@@ -128,6 +128,7 @@ type authWebTokenApi interface {
 	AssumeRoleWithWebIdentity(ctx context.Context, params *sts.AssumeRoleWithWebIdentityInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithWebIdentityOutput, error)
 }
 
+// LoginAwsWebToken
 func LoginAwsWebToken(ctx context.Context, username string, svc authWebTokenApi) (*AWSCredentials, error) {
 	// var role string
 	r, exists := os.LookupEnv(AWS_ROLE_ARN)

@@ -48,6 +48,9 @@ func GetCredsWebUI(ctx context.Context, svc credentialexchange.AuthSamlApi, secr
 	return credentialexchange.SetCredentials(storedCreds, conf)
 }
 
+// refreshAwsSsoCreds uses the temp user credentials returned via AWS SSO,
+// upon successful auth from the IDP.
+// Once credentials are captured they are used in the role assumption process.
 func refreshAwsSsoCreds(ctx context.Context, conf credentialexchange.CredentialConfig, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, webConfig *web.WebConfig) error {
 	webBrowser := web.New(webConfig)
 	capturedCreds, err := webBrowser.GetSSOCredentials(conf)

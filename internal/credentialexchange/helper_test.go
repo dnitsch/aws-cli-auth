@@ -106,21 +106,31 @@ func Test_InsertIntoRoleSlice_with(t *testing.T) {
 	ttests := map[string]struct {
 		role      string
 		roleChain []string
+		isSso     bool
 		expect    []string
 	}{
-		"chain empty and role specified": {
-			"role", []string{}, []string{},
+		"chain empty and role specified with insertRoleIntoChain as false": {
+			"role", []string{}, false, []string{},
 		},
-		"chain set and role empty": {
-			"", []string{"rolec1"}, []string{"rolec1"},
+		"chain set and role empty with insertRoleIntoChain as false": {
+			"", []string{"rolec1"}, false, []string{"rolec1"},
 		},
-		"both set and role is always first in list": {
-			"role", []string{"rolec1"}, []string{"rolec1"},
+		"both set and role is always first in list with insertRoleIntoChain as false": {
+			"role", []string{"rolec1"}, false, []string{"rolec1"},
+		},
+		"chain empty and role specified with insertRoleIntoChain as true": {
+			"role", []string{}, true, []string{"role"},
+		},
+		"chain set and role empty with insertRoleIntoChain as true": {
+			"", []string{"rolec1"}, true, []string{"rolec1"},
+		},
+		"both set and role is always first in list with insertRoleIntoChain as true": {
+			"role", []string{"rolec1"}, true, []string{"role", "rolec1"},
 		},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			if got := credentialexchange.InsertRoleIntoChain(tt.role, tt.roleChain); len(got) != len(tt.expect) {
+			if got := credentialexchange.MergeRoleChain(tt.role, tt.roleChain, tt.isSso); len(got) != len(tt.expect) {
 				t.Errorf("expected: %v, got: %v", tt.expect, got)
 			}
 		})

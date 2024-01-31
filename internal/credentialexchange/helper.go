@@ -40,17 +40,20 @@ func SessionName(username, selfName string) string {
 	return fmt.Sprintf("%s-%s", strings.ReplaceAll(username, `\`, "--"), selfName)
 }
 
-func InsertRoleIntoChain(role string, roleChain []string) []string {
+// MergeRoleChain inserts the main role into the role chain.
+//
+// This is mainly used with AWS SSO flow where
+// the SSO user credentials are used to assume the target role(s).
+func MergeRoleChain(role string, roleChain []string, insertRoleIntoChain bool) []string {
 	// IF role is provided it can be assumed from the WEB_ID credentials
 	// this is to maintain the old implementation
-	rc := []string{}
-	for _, r := range roleChain {
-		if r != role {
-			rc = append(rc, r)
+	if insertRoleIntoChain {
+		if role != "" {
+			return append([]string{role}, roleChain...)
 		}
+		return roleChain
 	}
-
-	return rc
+	return roleChain
 }
 
 func SetCredentials(creds *AWSCredentials, config CredentialConfig) error {
@@ -100,6 +103,8 @@ func returnStdOutAsJson(creds AWSCredentials) error {
 	return nil
 }
 
+// GetWebIdTokenFileContents reads the contents of the `AWS_WEB_IDENTITY_TOKEN_FILE` environment variable.
+// Used only with specific assume
 func GetWebIdTokenFileContents() (string, error) {
 	// var content *string
 	file, exists := os.LookupEnv(WEB_ID_TOKEN_VAR)

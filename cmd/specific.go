@@ -60,7 +60,7 @@ func specific(cmd *cobra.Command, args []string) error {
 			StoreInProfile: storeInProfile,
 			Username:       user.Username,
 			Role:           role,
-			RoleChain:      credentialexchange.InsertRoleIntoChain(role, roleChain),
+			RoleChain:      credentialexchange.MergeRoleChain(role, roleChain, false),
 		},
 	}
 
