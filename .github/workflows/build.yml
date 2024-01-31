@@ -12,15 +12,15 @@ jobs:
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0.9.15
+        uses: gittools/actions/gitversion/setup@v0
         with:
           versionSpec: '5.x'
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v0.9.15
+        uses: gittools/actions/gitversion/execute@v0
         id: gitversion
 
       - name: echo VERSIONS
@@ -37,7 +37,7 @@ jobs:
       GIT_TAG: ${{ needs.set-version.outputs.semVer }}
       GOVCS: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: install deps
