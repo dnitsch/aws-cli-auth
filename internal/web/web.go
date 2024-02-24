@@ -176,11 +176,11 @@ func (web *Web) MustClose() {
 	pid := web.launcher.PID()
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to launcher process: %s", err)
+		fmt.Fprintf(os.Stderr, "failed to find launcher process(%d): %s", pid, err)
 	}
 	if proc != nil {
 		if err := proc.Kill(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to kill process(%d): %s", pid, err)
+			fmt.Fprintf(os.Stderr, "failed to kill launcher process(%d): %s", pid, err)
 		}
 	}
 }
