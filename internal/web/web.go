@@ -171,7 +171,17 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 func (web *Web) MustClose() {
 	err := web.browser.Close()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "failed to close browser instance: %s", err)
+	}
+	pid := web.launcher.PID()
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to find launcher process(%d): %s", pid, err)
+	}
+	if proc != nil {
+		if err := proc.Kill(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to kill launcher process(%d): %s", pid, err)
+		}
 	}
 }
 

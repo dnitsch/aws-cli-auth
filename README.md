@@ -49,10 +49,6 @@ By default the tool creates the session name - which can be audited including th
 
 - Prior to `v0.8.0` you might be need to manually kill the `aws-cli-auth` process manually from your OS's process manager.
 
-## Licence
-
-WFTPL
-
 ## Contribute
 
 Contributions to the aws-auth-cli package are most welcome from engineers of all backgrounds and skill levels. 
