@@ -140,7 +140,7 @@ func Test_ClearCache(t *testing.T) {
 
 	webUi := web.New(web.NewWebConf(tempDir).WithHeadless().WithTimeout(20))
 
-	if err := webUi.ClearCache(); err != nil {
+	if err := webUi.ForceKill(tempDir); err != nil {
 		t.Errorf("expected <nil>, got: %s", err)
 	}
 

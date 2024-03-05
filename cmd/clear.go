@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/user"
 
 	"github.com/dnitsch/aws-cli-auth/internal/credentialexchange"
 	"github.com/dnitsch/aws-cli-auth/internal/web"
@@ -20,23 +21,33 @@ var (
 
 func init() {
 	cobra.OnInitialize(samlInitConfig)
-	clearCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, "If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over - this will clean them up forcefully")
+	clearCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, `If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over.
+
+This will forcefully all chromium processes.
+
+If you are on a windows machine and also use chrome as your current/main browser this will also kill those processes. 
+
+Use with caution.
+`)
 	rootCmd.AddCommand(clearCmd)
 }
 
 func clear(cmd *cobra.Command, args []string) error {
-
+	user, err := user.Current()
+	if err != nil {
+		return err
+	}
 	secretStore, err := credentialexchange.NewSecretStore("",
 		fmt.Sprintf("%s-%s", credentialexchange.SELF_NAME, credentialexchange.RoleKeyConverter("")),
-		os.TempDir(), "")
+		os.TempDir(), user.Username)
+
 	if err != nil {
 		return err
 	}
 
 	if force {
 		w := &web.Web{}
-		w.WithConfig(web.NewWebConf(datadir))
-		if err := w.ClearCache(); err != nil {
+		if err := w.ForceKill(datadir); err != nil {
 			return err
 		}
 		fmt.Fprint(os.Stderr, "Chromium Cache cleared")
@@ -44,9 +55,9 @@ func clear(cmd *cobra.Command, args []string) error {
 
 	secretStore.ClearAll()
 
-	if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
-		return err
-	}
+	// if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

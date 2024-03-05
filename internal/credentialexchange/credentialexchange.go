@@ -109,6 +109,11 @@ func IsValid(ctx context.Context, currentCreds *AWSCredentials, reloadBeforeTime
 	}
 
 	if _, err := svc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, func(o *sts.Options) {
+		// set the default region for the
+		// if o.EndpointOptions.GetResolvedRegion() == "" {
+		// 	// cannot determine
+		// 	o.BaseEndpoint = aws.String("https://sts.amazonaws.com")
+		// }
 		o.Credentials = &credsProvider{currentCreds.AWSAccessKey, currentCreds.AWSSecretKey, currentCreds.AWSSessionToken, currentCreds.Expires}
 	}); err != nil {
 		// var oe *smithy.OperationError
