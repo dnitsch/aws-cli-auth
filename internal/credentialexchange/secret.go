@@ -190,7 +190,9 @@ func (s *SecretStore) ClearAll() error {
 	}
 
 	for _, v := range srvSections {
-		if err := s.keyring.Delete(fmt.Sprintf("%s-%s", SELF_NAME, v), s.secretUser); err != nil {
+		srv := fmt.Sprintf("%s-%s", SELF_NAME, v)
+		// fmt.Fprintf(os.Stderr, "username: %s\ncredentialsecret: %s\n", s.secretUser, srv)
+		if err := s.keyring.Delete(srv, s.secretUser); err != nil {
 			return fmt.Errorf("%s, %w", err, ErrFailedToClearSecretStorage)
 		}
 	}

@@ -39,6 +39,7 @@ func GetCredsWebUI(ctx context.Context, svc credentialexchange.AuthSamlApi, secr
 	}
 
 	if !credsValid {
+		// TODO: delete from keychain first
 		if conf.IsSso {
 			return refreshAwsSsoCreds(ctx, conf, secretStore, svc, webConfig)
 		}

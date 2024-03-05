@@ -9,9 +9,10 @@ LDFLAGS := -ldflags="-s -w -X \"github.com/$(OWNER)/$(NAME)/cmd.Version=$(VERSIO
 .PHONY: test test_ci tidy install buildprep build buildmac buildwin
 
 test: test_prereq
-	go test ./... -v -mod=readonly -coverprofile=.coverage/out -race && \
-	cat .coverage/out | go-junit-report > .coverage/report-junit.xml && \
-	gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
+	go test ./... -v -mod=readonly -coverprofile=.coverage/out -race > .coverage/test.out ; \
+	cat .coverage/test.out | go-junit-report > .coverage/report-junit.xml ; \
+	gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml ; \
+	cat .coverage/test.out
 
 test_ci:
 	go test ./... -mod=readonly
