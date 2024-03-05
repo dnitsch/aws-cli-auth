@@ -55,9 +55,9 @@ func clear(cmd *cobra.Command, args []string) error {
 
 	secretStore.ClearAll()
 
-	// if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
-	// 	return err
-	// }
+	if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
+		return err
+	}
 
 	return nil
 }
