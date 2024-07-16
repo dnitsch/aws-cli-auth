@@ -15,6 +15,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: set global dir
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v1
         with:
