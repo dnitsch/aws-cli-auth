@@ -16,11 +16,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0
+        uses: gittools/actions/gitversion/setup@v1
         with:
           versionSpec: '5.x'
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v0
+        uses: gittools/actions/gitversion/execute@v1
         id: gitversion
 
       - name: echo VERSIONS
