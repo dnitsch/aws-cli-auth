@@ -53,7 +53,9 @@ func clear(cmd *cobra.Command, args []string) error {
 		fmt.Fprint(os.Stderr, "Chromium Cache cleared")
 	}
 
-	secretStore.ClearAll()
+	if err := secretStore.ClearAll(); err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+	}
 
 	if err := os.Remove(credentialexchange.ConfigIniFile("")); err != nil {
 		return err

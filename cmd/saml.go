@@ -20,6 +20,11 @@ var (
 	ErrUnableToCreateSession = errors.New("sts - cannot start a new session")
 )
 
+const (
+	UserEndpoint  = "https://portal.sso.%s.amazonaws.com/user"
+	CredsEndpoint = "https://portal.sso.%s.amazonaws.com/federation/credentials/"
+)
+
 var (
 	providerUrl        string
 	principalArn       string
@@ -97,8 +102,8 @@ func getSaml(cmd *cobra.Command, args []string) error {
 		}
 		saveRole = ssoRole
 
-		conf.SsoUserEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/user", conf.SsoRegion)
-		conf.SsoCredFedEndpoint = fmt.Sprintf("https://portal.sso.%s.amazonaws.com/federation/credentials/", conf.SsoRegion) + fmt.Sprintf("?account_id=%s&role_name=%s&debug=true", sr[0], sr[1])
+		conf.SsoUserEndpoint = fmt.Sprintf(UserEndpoint, conf.SsoRegion)
+		conf.SsoCredFedEndpoint = fmt.Sprintf(CredsEndpoint, conf.SsoRegion) + fmt.Sprintf("?account_id=%s&role_name=%s&debug=true", sr[0], sr[1])
 	}
 
 	datadir := path.Join(credentialexchange.HomeDir(), fmt.Sprintf(".%s-data", credentialexchange.SELF_NAME))
