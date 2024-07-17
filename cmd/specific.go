@@ -24,6 +24,8 @@ Returns the same JSON object as the call to the AWS cli for any of the sts Assum
 
 func init() {
 	specificCmd.PersistentFlags().StringVarP(&method, "method", "m", "WEB_ID", "Runs a specific credentialProvider as opposed to relying on the default chain provider fallback")
+	specificCmd.PersistentFlags().StringVarP(&role, "role", "r", "", `Set the role you want to assume when SAML or OIDC process completes`)
+	specificCmd.MarkPersistentFlagRequired("role")
 	rootCmd.AddCommand(specificCmd)
 }
 
@@ -64,7 +66,11 @@ func specific(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	awsCreds, err = credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, config.BaseConfig.Username, config.BaseConfig.RoleChain)
+	conf := credentialexchange.CredentialConfig{
+		Duration: duration,
+	}
+
+	awsCreds, err = credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, config.BaseConfig.Username, config.BaseConfig.RoleChain, conf)
 	if err != nil {
 		return err
 	}

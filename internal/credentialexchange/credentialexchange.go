@@ -170,11 +170,15 @@ func LoginAwsWebToken(ctx context.Context, username string, svc authWebTokenApi)
 // to pass to a credential provider and assume a specific role
 //
 // Most common use case is role chaining an WeBId role to a specific one
-func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc AuthSamlApi, username, role string) (*AWSCredentials, error) {
+// duration is the
+func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc AuthSamlApi, username, role string, duration int32) (*AWSCredentials, error) {
+
+	timeNowPlusDuration := time.Now().Add(time.Duration(duration) * time.Second)
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &role,
 		RoleSessionName: aws.String(SessionName(username, SELF_NAME)),
+		// DurationSeconds: &duration,
 	}
 
 	roleCreds, err := svc.AssumeRole(ctx, input, func(o *sts.Options) {
@@ -190,14 +194,18 @@ func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 		AWSSecretKey:    *roleCreds.Credentials.SecretAccessKey,
 		AWSSessionToken: *roleCreds.Credentials.SessionToken,
 		PrincipalARN:    *roleCreds.AssumedRoleUser.Arn,
-		Expires:         roleCreds.Credentials.Expiration.Local(),
+		Expires:         timeNowPlusDuration.Local(),
 	}, nil
 }
 
 // AssumeRoleInChain loops over all the roles provided
-func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string) (*AWSCredentials, error) {
-	for _, r := range roles {
-		c, err := assumeRoleWithCreds(ctx, baseCreds, svc, username, r)
+func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string, conf CredentialConfig) (*AWSCredentials, error) {
+	duration := int32(900)
+	for idx, r := range roles {
+		if len(roles) == idx+1 {
+			duration = int32(conf.Duration)
+		}
+		c, err := assumeRoleWithCreds(ctx, baseCreds, svc, username, r, duration)
 		if err != nil {
 			return nil, err
 		}

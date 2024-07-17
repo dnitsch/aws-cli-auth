@@ -443,7 +443,7 @@ func Test_AssumeSpecifiedCreds_with(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			got, err := credentialexchange.AssumeRoleInChain(context.TODO(), tt.currCred, tt.srv(t), "foo", []string{"barrole"})
+			got, err := credentialexchange.AssumeRoleInChain(context.TODO(), tt.currCred, tt.srv(t), "foo", []string{"barrole"}, credentialexchange.CredentialConfig{Duration: 14400})
 
 			if tt.expectErr {
 				if err == nil {
