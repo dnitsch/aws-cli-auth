@@ -199,6 +199,7 @@ func assumeRoleWithCreds(ctx context.Context, currentCreds *AWSCredentials, svc 
 }
 
 // AssumeRoleInChain loops over all the roles provided
+// If none are provided it will return the baseCreds
 func AssumeRoleInChain(ctx context.Context, baseCreds *AWSCredentials, svc AuthSamlApi, username string, roles []string, conf CredentialConfig) (*AWSCredentials, error) {
 	duration := int32(900)
 	for idx, r := range roles {

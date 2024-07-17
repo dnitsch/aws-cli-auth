@@ -112,7 +112,7 @@ func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, 
 			saml = strings.Split(saml, "SAMLResponse=")[1]
 			saml = strings.Split(saml, "&")[0]
 			return nurl.QueryUnescape(saml)
-		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
 			return "", fmt.Errorf("%w", ErrTimedOut)
 		// listen for closing of browser
 		// gracefully clean up
@@ -169,7 +169,7 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 			// empty case to ensure user endpoint sets correct clientside cookies
 		case creds := <-capturedCreds:
 			return creds, nil
-		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
 			return "", fmt.Errorf("%w", ErrTimedOut)
 		// listen for closing of browser
 		// gracefully clean up

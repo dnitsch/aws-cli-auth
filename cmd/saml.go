@@ -40,8 +40,9 @@ var (
 	ssoUserEndpoint    string
 	ssoFedCredEndpoint string
 	datadir            string
+	samlTimeout        int32
 	reloadBeforeTime   int
-	samlCmd            = &cobra.Command{
+	SamlCmd            = &cobra.Command{
 		Use:   "saml <SAML ProviderUrl>",
 		Short: "Get AWS credentials and out to stdout",
 		Long:  `Get AWS credentials and out to stdout through your SAML provider authentication.`,
@@ -64,32 +65,32 @@ var (
 
 func init() {
 	cobra.OnInitialize(samlInitConfig)
-	samlCmd.PersistentFlags().StringVarP(&providerUrl, "provider", "p", "", `Saml Entity StartSSO Url.
+	SamlCmd.PersistentFlags().StringVarP(&providerUrl, "provider", "p", "", `Saml Entity StartSSO Url.
 This is the URL your Idp will make the first call to e.g.: https://company-xyz.okta.com/home/amazon_aws/12345SomeRandonId6789
 `)
-	samlCmd.MarkPersistentFlagRequired("provider")
-	samlCmd.PersistentFlags().StringVarP(&principalArn, "principal", "", "", `Principal Arn of the SAML IdP in AWS
+	SamlCmd.MarkPersistentFlagRequired("provider")
+	SamlCmd.PersistentFlags().StringVarP(&principalArn, "principal", "", "", `Principal Arn of the SAML IdP in AWS
 You should find it in the IAM portal e.g.: arn:aws:iam::1234567891012:saml-provider/MyCompany-Idp
 `)
 	// samlCmd.MarkPersistentFlagRequired("principal")
-	samlCmd.PersistentFlags().StringVarP(&role, "role", "r", "", `Set the role you want to assume when SAML or OIDC process completes`)
-	samlCmd.PersistentFlags().StringVarP(&acsUrl, "acsurl", "a", "https://signin.aws.amazon.com/saml", "Override the default ACS Url, used for checkin the post of the SAMLResponse")
-	samlCmd.PersistentFlags().StringVarP(&ssoUserEndpoint, "sso-user-endpoint", "", UserEndpoint, "UserEndpoint in a go style fmt.Sprintf string with a region placeholder")
-	samlCmd.PersistentFlags().StringVarP(&ssoRole, "sso-role", "", "", "Sso Role name must be in this format - 12345678910:PowerUser")
-	samlCmd.PersistentFlags().StringVarP(&ssoFedCredEndpoint, "sso-fed-endpoint", "", CredsEndpoint, "FederationCredEndpoint in a go style fmt.Sprintf string with a region placeholder")
-	samlCmd.PersistentFlags().StringVarP(&ssoRegion, "sso-region", "", "eu-west-1", "If using SSO, you must set the region")
-	samlCmd.PersistentFlags().BoolVarP(&isSso, "is-sso", "", false, `Enables the new AWS User portal login. 
+	SamlCmd.PersistentFlags().StringVarP(&role, "role", "r", "", `Set the role you want to assume when SAML or OIDC process completes`)
+	SamlCmd.PersistentFlags().StringVarP(&acsUrl, "acsurl", "a", "https://signin.aws.amazon.com/saml", "Override the default ACS Url, used for checkin the post of the SAMLResponse")
+	SamlCmd.PersistentFlags().StringVarP(&ssoUserEndpoint, "sso-user-endpoint", "", UserEndpoint, "UserEndpoint in a go style fmt.Sprintf string with a region placeholder")
+	SamlCmd.PersistentFlags().StringVarP(&ssoRole, "sso-role", "", "", "Sso Role name must be in this format - 12345678910:PowerUser")
+	SamlCmd.PersistentFlags().StringVarP(&ssoFedCredEndpoint, "sso-fed-endpoint", "", CredsEndpoint, "FederationCredEndpoint in a go style fmt.Sprintf string with a region placeholder")
+	SamlCmd.PersistentFlags().StringVarP(&ssoRegion, "sso-region", "", "eu-west-1", "If using SSO, you must set the region")
+	SamlCmd.PersistentFlags().BoolVarP(&isSso, "is-sso", "", false, `Enables the new AWS User portal login. 
 If this flag is specified the --sso-role must also be specified.`)
-	samlCmd.PersistentFlags().IntVarP(&reloadBeforeTime, "reload-before", "", 0, "Triggers a credentials refresh before the specified max-duration. Value provided in seconds. Should be less than the max-duration of the session")
+	SamlCmd.PersistentFlags().IntVarP(&reloadBeforeTime, "reload-before", "", 0, "Triggers a credentials refresh before the specified max-duration. Value provided in seconds. Should be less than the max-duration of the session")
 	//
-	samlCmd.MarkFlagsMutuallyExclusive("role", "sso-role")
+	SamlCmd.MarkFlagsMutuallyExclusive("role", "sso-role")
 	// samlCmd.MarkFlagsMutuallyExclusive("principal", "sso-role")
 	// Non-SSO flow for SAML
-	samlCmd.MarkFlagsRequiredTogether("principal", "role")
+	SamlCmd.MarkFlagsRequiredTogether("principal", "role")
 	// SSO flow for SAML
-	samlCmd.MarkFlagsRequiredTogether("is-sso", "sso-role", "sso-region")
-
-	rootCmd.AddCommand(samlCmd)
+	SamlCmd.MarkFlagsRequiredTogether("is-sso", "sso-role", "sso-region")
+	SamlCmd.PersistentFlags().Int32VarP(&samlTimeout, "saml-timeout", "", 120, "Timeout in seconds, before the operation of waiting for a response is cancelled via the chrome driver")
+	RootCmd.AddCommand(SamlCmd)
 }
 
 func getSaml(cmd *cobra.Command, args []string) error {
@@ -145,7 +146,7 @@ func getSaml(cmd *cobra.Command, args []string) error {
 	}
 	svc := sts.NewFromConfig(cfg)
 
-	return cmdutils.GetCredsWebUI(ctx, svc, secretStore, conf, web.NewWebConf(datadir))
+	return cmdutils.GetCredsWebUI(ctx, svc, secretStore, conf, web.NewWebConf(datadir).WithTimeout(samlTimeout))
 }
 
 func samlInitConfig() {

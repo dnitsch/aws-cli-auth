@@ -12,7 +12,7 @@ import (
 
 var (
 	force    bool
-	clearCmd = &cobra.Command{
+	ClearCmd = &cobra.Command{
 		Use:   "clear-cache <flags>",
 		Short: "Clears any stored credentials in the OS secret store",
 		RunE:  clear,
@@ -21,7 +21,7 @@ var (
 
 func init() {
 	cobra.OnInitialize(samlInitConfig)
-	clearCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, `If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over.
+	ClearCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, `If aws-cli-auth exited improprely in a previous run there is a chance that there could be hanging processes left over.
 
 This will forcefully all chromium processes.
 
@@ -29,7 +29,7 @@ If you are on a windows machine and also use chrome as your current/main browser
 
 Use with caution.
 `)
-	rootCmd.AddCommand(clearCmd)
+	RootCmd.AddCommand(ClearCmd)
 }
 
 func clear(cmd *cobra.Command, args []string) error {

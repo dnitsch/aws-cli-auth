@@ -21,7 +21,7 @@ var (
 	roleChain          []string
 	verbose            bool
 	duration           int
-	rootCmd            = &cobra.Command{
+	RootCmd            = &cobra.Command{
 		Use:   "aws-cli-auth",
 		Short: "CLI tool for retrieving AWS temporary credentials",
 		Long: `CLI tool for retrieving AWS temporary credentials using SAML providers, or specified method of retrieval - i.e. force AWS_WEB_IDENTITY.
@@ -32,7 +32,7 @@ Stores them under the $HOME/.aws/credentials file under a specified path or retu
 )
 
 func Execute(ctx context.Context) {
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	if err := RootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Errorf("cli error: %v", err)
 		os.Exit(1)
 	}
@@ -40,13 +40,13 @@ func Execute(ctx context.Context) {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringSliceVarP(&roleChain, "role-chain", "", []string{}, "If specified it will assume the roles from the base credentials, in order they are specified in")
-	rootCmd.PersistentFlags().BoolVarP(&storeInProfile, "store-profile", "s", false, `By default the credentials are returned to stdout to be used by the credential_process. 
+	RootCmd.PersistentFlags().StringSliceVarP(&roleChain, "role-chain", "", []string{}, "If specified it will assume the roles from the base credentials, in order they are specified in")
+	RootCmd.PersistentFlags().BoolVarP(&storeInProfile, "store-profile", "s", false, `By default the credentials are returned to stdout to be used by the credential_process. 
 	Set this flag to instead store the credentials under a named profile section. You can then reference that profile name via the CLI or for use in an SDK`)
-	rootCmd.PersistentFlags().StringVarP(&cfgSectionName, "cfg-section", "", "", "Config section name in the default AWS credentials file. To enable priofi")
+	RootCmd.PersistentFlags().StringVarP(&cfgSectionName, "cfg-section", "", "", "Config section name in the default AWS credentials file. To enable priofi")
 	// When specifying store in profile the config section name must be provided
-	rootCmd.MarkFlagsRequiredTogether("store-profile", "cfg-section")
-	rootCmd.PersistentFlags().IntVarP(&duration, "max-duration", "d", 900, `Override default max session duration, in seconds, of the role session [900-43200]. 
+	RootCmd.MarkFlagsRequiredTogether("store-profile", "cfg-section")
+	RootCmd.PersistentFlags().IntVarP(&duration, "max-duration", "d", 900, `Override default max session duration, in seconds, of the role session [900-43200]. 
 NB: This cannot be higher than the 3600 as the API does not allow for AssumeRole for sessions longer than an hour`)
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }

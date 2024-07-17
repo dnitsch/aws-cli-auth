@@ -12,21 +12,21 @@ import (
 
 var (
 	method      string
-	specificCmd = &cobra.Command{
+	SpecificCmd = &cobra.Command{
 		Use:   "specific <flags>",
-		Short: "Initiates a specific crednetial provider [WEB_ID]",
-		Long: `Initiates a specific crednetial provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
+		Short: "Initiates a specific credential provider",
+		Long: `Initiates a specific credential provider [WEB_ID] as opposed to relying on the defaultCredentialChain provider.
 This is useful in CI situations where various authentication forms maybe present from AWS_ACCESS_KEY as env vars to metadata of the node.
-Returns the same JSON object as the call to the AWS cli for any of the sts AssumeRole* commands`,
+Returns the same JSON object as the call to the AWS CLI for any of the sts AssumeRole* commands`,
 		RunE: specific,
 	}
 )
 
 func init() {
-	specificCmd.PersistentFlags().StringVarP(&method, "method", "m", "WEB_ID", "Runs a specific credentialProvider as opposed to relying on the default chain provider fallback")
-	specificCmd.PersistentFlags().StringVarP(&role, "role", "r", "", `Set the role you want to assume when SAML or OIDC process completes`)
-	specificCmd.MarkPersistentFlagRequired("role")
-	rootCmd.AddCommand(specificCmd)
+	SpecificCmd.PersistentFlags().StringVarP(&method, "method", "m", "WEB_ID", "Runs a specific credentialProvider as opposed to relying on the default chain provider fallback")
+	SpecificCmd.PersistentFlags().StringVarP(&role, "role", "r", "", `Set the role you want to assume when SAML or OIDC process completes`)
+	SpecificCmd.MarkPersistentFlagRequired("role")
+	RootCmd.AddCommand(SpecificCmd)
 }
 
 func specific(cmd *cobra.Command, args []string) error {
