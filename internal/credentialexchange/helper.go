@@ -18,6 +18,12 @@ var (
 	ErrConfigFailure   = errors.New("config error")
 )
 
+const (
+	awsAccessKeySection    = "aws_access_key_id"
+	awsSecretKeyIdSection  = "aws_secret_access_key"
+	awsSessionTokenSection = "aws_session_token"
+)
+
 func HomeDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -83,9 +89,9 @@ func storeCredentialsInProfile(creds AWSCredentials, configSection string) error
 	if err != nil {
 		return err
 	}
-	cfg.Section(configSection).Key("aws_access_key_id").SetValue(creds.AWSAccessKey)
-	cfg.Section(configSection).Key("aws_secret_access_key").SetValue(creds.AWSSecretKey)
-	cfg.Section(configSection).Key("aws_session_token").SetValue(creds.AWSSessionToken)
+	cfg.Section(configSection).Key(awsAccessKeySection).SetValue(creds.AWSAccessKey)
+	cfg.Section(configSection).Key(awsSecretKeyIdSection).SetValue(creds.AWSSecretKey)
+	cfg.Section(configSection).Key(awsSessionTokenSection).SetValue(creds.AWSSessionToken)
 	cfg.SaveTo(awsConfPath)
 
 	return nil

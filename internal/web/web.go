@@ -112,8 +112,14 @@ func (web *Web) GetSamlLogin(conf credentialexchange.CredentialConfig) (string, 
 			saml = strings.Split(saml, "SAMLResponse=")[1]
 			saml = strings.Split(saml, "&")[0]
 			return nurl.QueryUnescape(saml)
-		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
 			return "", fmt.Errorf("%w", ErrTimedOut)
+		// listen for closing of browser
+		// gracefully clean up
+		case browserEvent := <-web.browser.Event():
+			if browserEvent != nil && browserEvent.Method == "Inspector.detached" {
+				return "", fmt.Errorf("%w", ErrTimedOut)
+			}
 		}
 	}
 }
@@ -126,6 +132,7 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 	web.browser.MustPage(conf.ProviderUrl)
 
 	router := web.browser.HijackRequests()
+
 	defer router.MustStop()
 
 	capturedCreds, loadedUserInfo := make(chan string), make(chan bool)
@@ -162,8 +169,14 @@ func (web *Web) GetSSOCredentials(conf credentialexchange.CredentialConfig) (str
 			// empty case to ensure user endpoint sets correct clientside cookies
 		case creds := <-capturedCreds:
 			return creds, nil
-		case <-time.After(time.Duration(web.conf.timeout*1000) * time.Millisecond):
+		case <-time.After(time.Duration(web.conf.timeout) * time.Second):
 			return "", fmt.Errorf("%w", ErrTimedOut)
+		// listen for closing of browser
+		// gracefully clean up
+		case browserEvent := <-web.browser.Event():
+			if browserEvent != nil && browserEvent.Method == "Inspector.detached" {
+				return "", fmt.Errorf("%w", ErrTimedOut)
+			}
 		}
 	}
 }
@@ -173,25 +186,19 @@ func (web *Web) MustClose() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to close browser instance: %s", err)
 	}
-	pid := web.launcher.PID()
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to find launcher process(%d): %s", pid, err)
-	}
-	if proc != nil {
-		if err := proc.Kill(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to kill launcher process(%d): %s", pid, err)
-		}
-	}
+	// launcher.Kill performs the PID lookup and kills it
+	web.launcher.Kill()
 }
 
-func (web *Web) ClearCache() error {
+func (web *Web) ForceKill(datadir string) error {
 	errs := []error{}
 
-	if err := os.RemoveAll(web.conf.datadir); err != nil {
+	if err := checkRodProcess(); err != nil {
 		errs = append(errs, err)
 	}
-	if err := checkRodProcess(); err != nil {
+	// once processes have been killed
+	// we can remove the datadir
+	if err := os.RemoveAll(datadir); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -210,13 +217,16 @@ func checkRodProcess() error {
 		return err
 	}
 	for _, v := range ps {
-		if strings.Contains(v.Executable(), "Chromium") {
+		// grab all chromium processes
+		// on windows the name will be reported as `chrome.exe`
+		if strings.Contains(strings.ToLower(v.Executable()), "chrom") {
+			fmt.Fprintf(os.Stderr, "Found process: (%d) and its parent (%d)\n", v.Pid(), v.PPid())
 			pids = append(pids, v.Pid())
 		}
 	}
 	for _, pid := range pids {
-		fmt.Fprintf(os.Stderr, "Process to be killed as part of clean up: %d", pid)
 		if proc, _ := os.FindProcess(pid); proc != nil {
+			fmt.Fprintf(os.Stderr, "Process to be killed as part of clean up: %d\n", pid)
 			proc.Kill()
 		}
 	}

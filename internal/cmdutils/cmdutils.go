@@ -39,6 +39,7 @@ func GetCredsWebUI(ctx context.Context, svc credentialexchange.AuthSamlApi, secr
 	}
 
 	if !credsValid {
+		// TODO: delete from keychain first
 		if conf.IsSso {
 			return refreshAwsSsoCreds(ctx, conf, secretStore, svc, webConfig)
 		}
@@ -66,17 +67,28 @@ func refreshSamlCreds(ctx context.Context, conf credentialexchange.CredentialCon
 
 	webBrowser := web.New(webConfig)
 
+	duration := conf.Duration
+
 	samlResp, err := webBrowser.GetSamlLogin(conf)
 	if err != nil {
 		return err
+	}
+
+	// If there are additional roles to chain from
+	// set the duration to 900 seconds
+	// and respect the user provided value
+	// when applying the assuming the last role
+	if len(conf.BaseConfig.RoleChain) > 0 {
+		duration = 900
 	}
 
 	roleObj := credentialexchange.AWSRole{
 		RoleARN:      conf.BaseConfig.Role,
 		PrincipalARN: conf.PrincipalArn,
 		Name:         credentialexchange.SessionName(conf.BaseConfig.Username, credentialexchange.SELF_NAME),
-		Duration:     conf.Duration,
+		Duration:     duration,
 	}
+
 	awsCreds, err := credentialexchange.LoginStsSaml(ctx, samlResp, roleObj, svc)
 	if err != nil {
 		return err
@@ -85,7 +97,7 @@ func refreshSamlCreds(ctx context.Context, conf credentialexchange.CredentialCon
 }
 
 func completeCredProcess(ctx context.Context, secretStore SecretStorageImpl, svc credentialexchange.AuthSamlApi, awsCreds *credentialexchange.AWSCredentials, conf credentialexchange.CredentialConfig) error {
-	creds, err := credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, conf.BaseConfig.Username, conf.BaseConfig.RoleChain)
+	creds, err := credentialexchange.AssumeRoleInChain(ctx, awsCreds, svc, conf.BaseConfig.Username, conf.BaseConfig.RoleChain, conf)
 	if err != nil {
 		return err
 	}

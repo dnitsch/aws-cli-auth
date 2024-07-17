@@ -128,10 +128,6 @@ func Test_WebUI_timeout_and_return_error(t *testing.T) {
 func Test_ClearCache(t *testing.T) {
 	ts := httptest.NewServer(mockIdpHandler(t))
 	defer ts.Close()
-	conf := credentialexchange.CredentialConfig{BaseConfig: credentialexchange.BaseConfig{}}
-	conf.AcsUrl = fmt.Sprintf("%s/unknown", ts.URL)
-	conf.ProviderUrl = fmt.Sprintf("%s/idp-onload", ts.URL)
-
 	tempDir, _ := os.MkdirTemp(os.TempDir(), "web-clear-saml-tester")
 
 	defer func() {
@@ -140,7 +136,7 @@ func Test_ClearCache(t *testing.T) {
 
 	webUi := web.New(web.NewWebConf(tempDir).WithHeadless().WithTimeout(20))
 
-	if err := webUi.ClearCache(); err != nil {
+	if err := webUi.ForceKill(tempDir); err != nil {
 		t.Errorf("expected <nil>, got: %s", err)
 	}
 
