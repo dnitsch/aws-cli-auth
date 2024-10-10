@@ -28,6 +28,9 @@ This will forcefully all chromium processes.
 If you are on a windows machine and also use chrome as your current/main browser this will also kill those processes. 
 
 Use with caution.
+
+If for any reason the local ini file and the secret store on your OS (keyring on GNU, keychain MacOS, windows secret store) are out of sync and the secrets cannot be retrieved by name but still exists,
+you might want to use CLI or GUI interface to the secret backing store on your OS and search for a secret prefixed with aws-cli-* and delete manually
 `)
 	RootCmd.AddCommand(ClearCmd)
 }
