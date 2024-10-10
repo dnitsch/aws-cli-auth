@@ -119,7 +119,8 @@ func IsValid(ctx context.Context, currentCreds *AWSCredentials, reloadBeforeTime
 		// var oe *smithy.OperationError
 		var oe smithy.APIError
 		if errors.As(err, &oe) {
-			if oe.ErrorCode() == "ExpiredToken" {
+			if oe.ErrorCode() == "ExpiredToken" || oe.ErrorCode() == "InvalidClientTokenId" {
+				fmt.Fprintln(os.Stderr, "Stored Credentials invalid or expired")
 				return false, nil
 			}
 		}
